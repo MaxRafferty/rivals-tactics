@@ -37,24 +37,6 @@
     color: var(--accent); font-weight: 700;
   }
   header .sub { color: var(--dim); font-size: 12px; letter-spacing: 1px; }
-  header .spacer { flex: 1; }
-  .gear-btn {
-    background: none; border: 1px solid var(--line); color: var(--dim);
-    border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px;
-  }
-  .gear-btn:hover { color: var(--text); border-color: var(--accent); }
-  #settings {
-    display: none; padding: 12px 22px; border-bottom: 1px solid var(--line);
-    background: var(--panel); align-items: center; gap: 10px;
-  }
-  #settings.open { display: flex; }
-  #settings label { font-size: 13px; color: var(--dim); }
-  #settings input {
-    flex: 1; max-width: 480px; background: var(--bg); border: 1px solid var(--line);
-    color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 13px;
-  }
-  #settings .hint { font-size: 12px; color: var(--dim); }
-
   nav.tabs {
     display: flex; gap: 4px; padding: 10px 22px 0;
     border-bottom: 1px solid var(--line);
@@ -83,12 +65,15 @@
   .squad-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .hex-row { display: flex; gap: 8px; }
   .hex {
-    width: 62px; height: 70px; display: flex; align-items: center; justify-content: center;
+    width: 92px; height: 82px; display: flex; align-items: center; justify-content: center;
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
     background: var(--panel-2); border: none; color: var(--dim);
-    font-weight: 700; font-size: 15px; cursor: pointer; position: relative;
+    font-weight: 700; font-size: 20px; cursor: pointer; position: relative;
   }
-  .hex.filled { color: #0b0e14; }
+  .hex.filled {
+    color: #0b0e14; font-size: 12px; line-height: 1.15;
+    padding: 0 12px; text-align: center; white-space: normal; word-break: break-word;
+  }
   .hex.filled.Vanguard { background: var(--vanguard); }
   .hex.filled.Duelist { background: var(--duelist); }
   .hex.filled.Strategist { background: var(--strategist); }
@@ -106,7 +91,7 @@
   .name-chip.Multi { color: var(--multi); border-color: var(--multi); }
   .name-chips .empty { color: var(--dim); font-size: 13px; padding: 4px 0; }
 
-  /* Scan controls */
+  /* Voice / action controls */
   .scan-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   .btn {
     background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
@@ -119,12 +104,6 @@
   .scan-status { font-size: 13px; color: var(--dim); }
   .scan-status.err { color: var(--red); }
   .scan-status.ok { color: var(--accent); }
-  .region-toggle { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-  .region-toggle button {
-    background: none; border: none; color: var(--dim); padding: 6px 12px;
-    cursor: pointer; font-size: 12px;
-  }
-  .region-toggle button.active { background: var(--accent); color: #0b0e14; font-weight: 700; }
   .paste-hint { font-size: 12px; color: var(--dim); }
   #voice-btn.live { border-color: var(--red); color: var(--red); animation: mic-pulse 1.4s ease infinite; }
   @keyframes mic-pulse {
@@ -209,15 +188,7 @@
 <header>
   <h1>Rivals Tactics</h1>
   <span class="sub">Season 8.5 &middot; 51 heroes</span>
-  <span class="spacer"></span>
-  <button class="gear-btn" onclick="toggleSettings()">&#9881; Settings</button>
 </header>
-
-<div id="settings">
-  <label for="api-key">Anthropic API key (for screenshot scan):</label>
-  <input type="password" id="api-key" placeholder="sk-ant-..." onchange="saveKey()">
-  <span class="hint">Stored only in this browser (localStorage). Get one at console.anthropic.com.</span>
-</div>
 
 <nav class="tabs">
   <button class="active" data-view="squad" onclick="showView('squad')">Squad Builder</button>
@@ -236,12 +207,6 @@
     <div class="name-chips" id="squad-chips"></div>
     <div class="balance" id="squad-balance"></div>
     <div class="warnings" id="squad-warnings"></div>
-    <div class="scan-row">
-      <button class="btn" onclick="document.getElementById('file-my').click()">Scan screenshot</button>
-      <input type="file" id="file-my" accept="image/*" hidden>
-      <span class="paste-hint">or press Ctrl+V to paste a snip (Win+Shift+S)</span>
-      <span class="scan-status" id="status-my"></span>
-    </div>
   </div>
   <div class="panel">
     <h2>Hero Picker</h2>
@@ -265,17 +230,6 @@
         <input type="checkbox" id="voice-speak" checked> speak back
       </label>
       <span class="scan-status" id="voice-status">Say hero names ("Venom, Spidey, Luna") &middot; "remove Venom" &middot; "clear" &middot; "lock it in"</span>
-    </div>
-    <div class="scan-row">
-      <button class="btn" onclick="document.getElementById('file-enemy').click()">Scan screenshot</button>
-      <input type="file" id="file-enemy" accept="image/*" hidden>
-      <span class="paste-hint">or press Ctrl+V to paste a snip</span>
-      <div class="region-toggle" id="region-toggle">
-        <button data-region="right" class="active" onclick="setRegion('right')">Right column</button>
-        <button data-region="left" onclick="setRegion('left')">Left column</button>
-        <button data-region="full" onclick="setRegion('full')">Full image</button>
-      </div>
-      <span class="scan-status" id="status-enemy"></span>
     </div>
   </div>
   <div class="panel" id="intel-panel" style="display:none">
@@ -368,7 +322,6 @@ HEROES.forEach(h => byName[h.name.toLowerCase()] = h);
 
 /* ============ STATE ============ */
 const squads = { my: [], enemy: [] };
-let scanRegion = "right";
 
 /* ============ VIEWS / TABS ============ */
 function showView(id) {
@@ -377,17 +330,7 @@ function showView(id) {
   document.querySelectorAll("nav.tabs button").forEach(b =>
     b.classList.toggle("active", b.dataset.view === id));
 }
-function toggleSettings() {
-  document.getElementById("settings").classList.toggle("open");
-}
-function saveKey() {
-  localStorage.setItem("rivals_api_key", document.getElementById("api-key").value.trim());
-}
-
 /* ============ SQUAD RENDERING ============ */
-function initials(name) {
-  return name.split(/[\s&-]+/).filter(Boolean).map(w => w[0]).join("").slice(0, 3).toUpperCase();
-}
 function renderSquad(which) {
   const squad = squads[which];
   const slotsEl = document.getElementById(which === "my" ? "squad-slots" : "enemy-slots");
@@ -397,14 +340,14 @@ function renderSquad(which) {
     const hero = squad[i];
     const hex = document.createElement("button");
     hex.className = "hex" + (hero ? " filled " + hero.role : "");
-    hex.textContent = hero ? initials(hero.name) : "+";
+    hex.textContent = hero ? hero.name : "+";
     hex.title = hero ? hero.name + " (click to remove)" : "Empty slot";
     if (hero) hex.onclick = () => togglePick(which, hero);
     slotsEl.appendChild(hex);
   }
   chipsEl.innerHTML = squad.length
     ? squad.map(h => `<span class="name-chip ${h.role}">${h.name}</span>`).join("")
-    : `<span class="empty">No heroes selected — pick below or scan a screenshot.</span>`;
+    : `<span class="empty">No heroes selected — pick below to build your squad.</span>`;
   renderPicker(which);
   if (which === "my") renderBalance();
   if (which === "enemy") document.getElementById("intel-panel").style.display = "none";
@@ -419,7 +362,6 @@ function togglePick(which, hero) {
 function clearSquad(which) {
   squads[which] = [];
   renderSquad(which);
-  setStatus(which === "my" ? "status-my" : "status-enemy", "", "");
 }
 function renderPicker(which) {
   const el = document.getElementById(which === "my" ? "squad-picker" : "enemy-picker");
@@ -526,7 +468,7 @@ const RULES = [
 function lockComp() {
   const enemy = squads.enemy;
   if (!enemy.length) {
-    setStatus("status-enemy", "Add at least one enemy hero first.", "err");
+    voiceStatus("Add at least one enemy hero first.", "err");
     return null;
   }
   const tags = {};
@@ -813,135 +755,7 @@ function speakIntel(results) {
   speak("Comp locked. " + lines.join(" "));
 }
 
-/* ============ SCREENSHOT SCAN (Claude vision) ============ */
-function setRegion(r) {
-  scanRegion = r;
-  document.querySelectorAll("#region-toggle button").forEach(b =>
-    b.classList.toggle("active", b.dataset.region === r));
-}
-function setStatus(id, msg, cls) {
-  const el = document.getElementById(id);
-  el.textContent = msg;
-  el.className = "scan-status" + (cls ? " " + cls : "");
-}
-function loadImage(dataUrl) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Could not load that image"));
-    img.src = dataUrl; // data: URL, not blob:, for sandbox/CSP safety
-  });
-}
-// Resize (max 1400px long edge) and optionally crop to one column before sending.
-async function prepareImage(dataUrl, region) {
-  const img = await loadImage(dataUrl);
-  let sx = 0, sw = img.width;
-  if (region === "right") { sx = Math.floor(img.width * 0.48); sw = img.width - sx; }
-  if (region === "left")  { sw = Math.ceil(img.width * 0.52); }
-  const sh = img.height;
-  const MAX = 1400;
-  const scale = Math.min(1, MAX / Math.max(sw, sh));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(sw * scale);
-  canvas.height = Math.round(sh * scale);
-  canvas.getContext("2d").drawImage(img, sx, 0, sw, sh, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/jpeg", 0.85);
-}
-async function scanImage(dataUrl, which) {
-  const statusId = which === "my" ? "status-my" : "status-enemy";
-  const apiKey = localStorage.getItem("rivals_api_key");
-  if (!apiKey) {
-    setStatus(statusId, "Add your Anthropic API key in Settings (top right) to enable scanning.", "err");
-    document.getElementById("settings").classList.add("open");
-    return;
-  }
-  try {
-    setStatus(statusId, "Reading screenshot...", "");
-    const region = which === "enemy" ? scanRegion : "full";
-    const jpeg = await prepareImage(dataUrl, region);
-    const b64 = jpeg.split(",")[1];
-    const context = which === "enemy"
-      ? "This crop shows ONLY the enemy team of a Marvel Rivals hero-select or scoreboard screen. Every hero visible belongs to the enemy team."
-      : "This is a Marvel Rivals hero-select or scoreboard screenshot. Identify the heroes on the player's own team.";
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-5",
-        max_tokens: 300,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: b64 } },
-            { type: "text", text: context +
-              " Respond with ONLY a JSON array of hero names (up to 6), spelled exactly as in this list: " +
-              JSON.stringify(HEROES.map(h => h.name)) +
-              ". If you cannot identify any, respond with []." },
-          ],
-        }],
-      }),
-    });
-    if (!resp.ok) {
-      let detail = "";
-      try { detail = (await resp.json()).error?.message || ""; } catch {}
-      throw new Error(`API request failed (${resp.status})${detail ? ": " + detail : ""}`);
-    }
-    const data = await resp.json();
-    const text = data.content.map(c => c.text || "").join("");
-    const match = text.match(/\[[\s\S]*\]/);
-    const names = match ? JSON.parse(match[0]) : [];
-    const found = [];
-    names.forEach(n => {
-      const hero = byName[String(n).toLowerCase()] ||
-        HEROES.find(h => h.name.toLowerCase().includes(String(n).toLowerCase()));
-      if (hero && !found.includes(hero)) found.push(hero);
-    });
-    if (!found.length) {
-      setStatus(statusId, "No heroes recognized — try a cleaner shot of the portraits.", "err");
-      return;
-    }
-    squads[which] = found.slice(0, 6);
-    renderSquad(which);
-    setStatus(statusId, "Found: " + found.map(h => h.name).join(", "), "ok");
-    if (which === "enemy") lockComp();
-  } catch (e) {
-    setStatus(statusId, "Scan failed: " + e.message, "err");
-  }
-}
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = () => reject(new Error("Could not read file"));
-    r.readAsDataURL(file);
-  });
-}
-document.getElementById("file-my").addEventListener("change", async e => {
-  if (e.target.files[0]) scanImage(await fileToDataUrl(e.target.files[0]), "my");
-  e.target.value = "";
-});
-document.getElementById("file-enemy").addEventListener("change", async e => {
-  if (e.target.files[0]) scanImage(await fileToDataUrl(e.target.files[0]), "enemy");
-  e.target.value = "";
-});
-// Ctrl+V paste routes to whichever tab is active.
-document.addEventListener("paste", async e => {
-  const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith("image/"));
-  if (!item) return;
-  e.preventDefault();
-  const which = document.getElementById("view-intel").classList.contains("active") ? "enemy"
-              : document.getElementById("view-squad").classList.contains("active") ? "my" : null;
-  if (!which) return;
-  scanImage(await fileToDataUrl(item.getAsFile()), which);
-});
-
 /* ============ INIT ============ */
-document.getElementById("api-key").value = localStorage.getItem("rivals_api_key") || "";
 renderSquad("my");
 renderSquad("enemy");
 </script>
