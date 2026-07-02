@@ -64,6 +64,35 @@
     color: var(--accent); font-weight: 700;
   }
   header .sub { color: var(--dim); font-size: 12px; letter-spacing: 1px; }
+  .header-spacer { flex: 1; }
+  .help-btn {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    background: none; border: 1px solid var(--line); color: var(--dim);
+    font-size: 15px; font-weight: 700; cursor: pointer; line-height: 1;
+  }
+  .help-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* First-run intro / help card */
+  .intro-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(55,224,200,0.12), rgba(18,23,34,0.85));
+    border: 1px solid var(--accent); border-radius: 10px;
+    padding: 16px 18px; margin-bottom: 16px;
+    backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+  }
+  .intro-card h2 {
+    color: var(--accent); font-size: 15px; letter-spacing: 0.5px;
+    text-transform: none; margin-bottom: 10px;
+  }
+  .intro-card ul { list-style: none; display: grid; gap: 7px; margin: 0 0 14px; }
+  .intro-card li { font-size: 13.5px; color: var(--text); line-height: 1.4; }
+  .intro-card .dim { color: var(--dim); }
+  .intro-card .intro-close {
+    position: absolute; top: 8px; right: 12px; background: none; border: none;
+    color: var(--dim); font-size: 20px; cursor: pointer; line-height: 1; padding: 4px;
+  }
+  .intro-card .intro-close:hover { color: var(--text); }
   nav.tabs {
     display: flex; gap: 4px; padding: 10px 22px 0;
     border-bottom: 1px solid var(--line);
@@ -287,6 +316,8 @@
 <header>
   <h1>Rivals Tactics</h1>
   <span class="sub">Season 8.5 &middot; 51 heroes</span>
+  <span class="header-spacer"></span>
+  <button class="help-btn" onclick="showIntro()" title="How this works" aria-label="How this works">?</button>
 </header>
 
 <nav class="tabs">
@@ -296,6 +327,17 @@
 
 <!-- ============ TEAM COMPS ============ -->
 <div class="view active" id="view-comps">
+  <div class="intro-card" id="intro-card">
+    <button class="intro-close" onclick="dismissIntro()" title="Dismiss" aria-label="Dismiss">&times;</button>
+    <h2>Welcome to Rivals Tactics</h2>
+    <ul>
+      <li><b>Team Comps</b> &mdash; Pick <b>your</b> heroes and the <b>enemy's</b> from the list below; use the <b>My Team / Enemy Team</b> toggle to choose which side you're filling. Your side shows role balance and warnings.</li>
+      <li><b>Counter Intel</b> &mdash; Hit <b>Lock in comp</b> for counter-pick suggestions based on the enemy lineup.</li>
+      <li><b>&#127908; Voice input</b> &mdash; On the enemy side, tap the mic and just say hero names (works in Edge/Chrome). Say <span class="dim">&ldquo;lock it in&rdquo;</span> for spoken counters.</li>
+      <li><b>Ult Watch</b> &mdash; Track enemy ultimate cooldowns with countdown timers.</li>
+    </ul>
+    <button class="btn primary" onclick="dismissIntro()">Got it</button>
+  </div>
   <div class="comp-grid">
     <!-- Left: your squad -->
     <div class="panel">
@@ -430,6 +472,18 @@ HEROES.forEach(h => byName[h.name.toLowerCase()] = h);
 /* ============ STATE ============ */
 const squads = { my: [], enemy: [] };
 let pickTarget = "my"; // which team the shared hero picker adds to
+
+/* ============ INTRO / HELP CARD ============ */
+function dismissIntro() {
+  document.getElementById("intro-card").style.display = "none";
+  localStorage.setItem("rivals_intro_dismissed", "1");
+}
+function showIntro() {
+  showView("comps"); // the card lives on the Team Comps tab
+  const card = document.getElementById("intro-card");
+  card.style.display = "";
+  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
 
 /* ============ VIEWS / TABS ============ */
 function setPickTarget(which) {
@@ -894,6 +948,9 @@ function speakIntel(results) {
 }
 
 /* ============ INIT ============ */
+if (localStorage.getItem("rivals_intro_dismissed")) {
+  document.getElementById("intro-card").style.display = "none";
+}
 renderSquad("my");
 renderSquad("enemy");
 </script>
