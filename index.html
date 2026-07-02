@@ -169,6 +169,12 @@
     padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
   }
   .hero-btn:hover { border-color: var(--accent); }
+  .role-section h3.Upcoming { color: var(--gold); }
+  .hero-btn.upcoming {
+    opacity: 0.6; cursor: not-allowed; color: var(--dim);
+    border-style: dashed; border-color: var(--gold);
+  }
+  .hero-btn.upcoming:hover { border-color: var(--gold); }
   .hero-btn.picked-my { background: var(--accent); color: #0b0e14; border-color: var(--accent); font-weight: 700; }
   .hero-btn.picked-enemy { background: var(--red); color: #0b0e14; border-color: var(--red); font-weight: 700; }
   .hero-btn.picked-my.picked-enemy {
@@ -411,6 +417,11 @@ const HEROES = [
   { name: "White Fox",       role: "Strategist", tags: ["healer","mobile","cc"] },
   // Multi-Role (1)
   { name: "Deadpool",        role: "Multi", tags: ["brawl","dive","sustain"] },
+  // Upcoming — Season 9 (launches July 10, 2026). Roles/tags are TBD until the
+  // real kits drop; shown in the picker but not yet selectable. On launch,
+  // change role to the real one, add tags, and delete `upcoming: true`.
+  { name: "Jubilee",         role: "Upcoming", tags: [], upcoming: true },
+  { name: "The Hood",        role: "Upcoming", tags: [], upcoming: true },
 ];
 const ROLES = ["Vanguard", "Duelist", "Strategist", "Multi"];
 const byName = {};
@@ -470,7 +481,7 @@ function renderPicker() {
   const el = document.getElementById("hero-picker");
   el.innerHTML = "";
   ROLES.forEach(role => {
-    const heroes = HEROES.filter(h => h.role === role);
+    const heroes = HEROES.filter(h => h.role === role && !h.upcoming);
     if (!heroes.length) return;
     const sec = document.createElement("div");
     sec.className = "role-section";
@@ -492,6 +503,25 @@ function renderPicker() {
     sec.appendChild(grid);
     el.appendChild(sec);
   });
+  // Upcoming heroes (Season 9) — shown but not selectable until roles are known
+  const upcoming = HEROES.filter(h => h.upcoming);
+  if (upcoming.length) {
+    const sec = document.createElement("div");
+    sec.className = "role-section";
+    sec.innerHTML = `<h3 class="Upcoming">Upcoming &middot; Season 9 (July 10)</h3>`;
+    const grid = document.createElement("div");
+    grid.className = "hero-grid";
+    upcoming.forEach(h => {
+      const b = document.createElement("button");
+      b.className = "hero-btn upcoming";
+      b.disabled = true;
+      b.textContent = h.name;
+      b.title = h.name + " — arrives Season 9 (July 10, 2026). Role TBD, not selectable yet.";
+      grid.appendChild(b);
+    });
+    sec.appendChild(grid);
+    el.appendChild(sec);
+  }
 }
 
 /* ============ ROLE BALANCE (Squad Builder) ============ */
@@ -623,7 +653,7 @@ function renderUltSearch(q) {
   const el = document.getElementById("ult-results");
   q = q.trim().toLowerCase();
   if (!q) { el.innerHTML = ""; return; }
-  const hits = HEROES.filter(h => h.name.toLowerCase().includes(q)).slice(0, 12);
+  const hits = HEROES.filter(h => !h.upcoming && h.name.toLowerCase().includes(q)).slice(0, 12);
   el.innerHTML = "";
   hits.forEach(h => {
     const b = document.createElement("button");
