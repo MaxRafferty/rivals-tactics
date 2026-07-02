@@ -126,6 +126,11 @@
   }
   .region-toggle button.active { background: var(--accent); color: #0b0e14; font-weight: 700; }
   .paste-hint { font-size: 12px; color: var(--dim); }
+  #voice-btn.live { border-color: var(--red); color: var(--red); animation: mic-pulse 1.4s ease infinite; }
+  @keyframes mic-pulse {
+    0%, 100% { box-shadow: none; }
+    50% { box-shadow: 0 0 12px rgba(229, 83, 75, 0.7); }
+  }
 
   /* Role balance readout */
   .balance { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
@@ -254,6 +259,13 @@
       <button class="btn danger" onclick="clearSquad('enemy')">Clear</button>
     </div>
     <div class="name-chips" id="enemy-chips"></div>
+    <div class="scan-row">
+      <button class="btn" id="voice-btn" onclick="toggleVoice()">&#127908; Voice input</button>
+      <label class="paste-hint" title="Reads confirmations and counter intel out loud so you never look away from the game">
+        <input type="checkbox" id="voice-speak" checked> speak back
+      </label>
+      <span class="scan-status" id="voice-status">Say hero names ("Venom, Spidey, Luna") &middot; "remove Venom" &middot; "clear" &middot; "lock it in"</span>
+    </div>
     <div class="scan-row">
       <button class="btn" onclick="document.getElementById('file-enemy').click()">Scan screenshot</button>
       <input type="file" id="file-enemy" accept="image/*" hidden>
@@ -515,7 +527,7 @@ function lockComp() {
   const enemy = squads.enemy;
   if (!enemy.length) {
     setStatus("status-enemy", "Add at least one enemy hero first.", "err");
-    return;
+    return null;
   }
   const tags = {};
   const roles = { Vanguard: 0, Duelist: 0, Strategist: 0, Multi: 0 };
@@ -524,30 +536,35 @@ function lockComp() {
     h.tags.forEach(t => tags[t] = (tags[t] || 0) + 1);
   });
   const t = new Proxy(tags, { get: (o, k) => o[k] || 0 });
-  const fired = RULES.filter(r => r.when(t, roles));
+  const results = RULES.filter(r => r.when(t, roles)).map(rule => ({
+    headline: rule.headline,
+    reason: rule.reason,
+    picks: HEROES
+      .filter(h => !enemy.includes(h) && h.tags.some(tag => rule.want.includes(tag)))
+      .map(h => ({ h, score: h.tags.filter(tag => rule.want.includes(tag)).length }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+      .map(p => p.h),
+  }));
   const cardsEl = document.getElementById("intel-cards");
-  if (!fired.length) {
+  if (!results.length) {
     cardsEl.innerHTML = `<div class="intel-card"><div class="headline">Balanced comp</div>
       <div class="reason">No standout weakness detected — win on fundamentals: focus fire, track ults, and take fights 6v5.</div></div>`;
   } else {
-    cardsEl.innerHTML = fired.map(rule => {
-      const picks = HEROES
-        .filter(h => !enemy.includes(h) && h.tags.some(tag => rule.want.includes(tag)))
-        .map(h => ({ h, score: h.tags.filter(tag => rule.want.includes(tag)).length }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 8);
-      const chips = picks.map(p =>
-        `<span class="pick-chip">${squads.my.includes(p.h) ? '<span class="check">&#10003;</span> ' : ""}${p.h.name}</span>`
+    cardsEl.innerHTML = results.map(r => {
+      const chips = r.picks.map(h =>
+        `<span class="pick-chip">${squads.my.includes(h) ? '<span class="check">&#10003;</span> ' : ""}${h.name}</span>`
       ).join("");
       return `<div class="intel-card">
-        <div class="headline">${rule.headline}</div>
-        <div class="reason">${rule.reason}</div>
+        <div class="headline">${r.headline}</div>
+        <div class="reason">${r.reason}</div>
         <div class="picks">${chips}</div>
       </div>`;
     }).join("");
   }
   document.getElementById("intel-panel").style.display = "block";
   document.getElementById("intel-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  return results;
 }
 
 /* ============ ULT WATCH ============ */
@@ -623,6 +640,178 @@ function removeUlt(name) {
   document.getElementById("timer-" + cssId(name)).remove();
 }
 function cssId(s) { return s.replace(/[^a-z0-9]/gi, "-").toLowerCase(); }
+
+/* ============ VOICE INPUT (hands-free enemy comp) ============
+   Uses the browser's built-in Web Speech API — no API key needed.
+   Say hero names to fill the enemy squad; "remove X", "clear",
+   "lock it in". Auto-locks at 6 and reads the intel back out loud. */
+const ALIASES = {
+  "Captain America": ["cap", "steve rogers"],
+  "Doctor Strange": ["strange", "dr strange", "doc strange"],
+  "Groot": ["grout", "root"],
+  "Hulk": ["bruce banner", "the hulk"],
+  "Magneto": ["mag neato"],
+  "Peni Parker": ["penny parker", "peni", "penny"],
+  "Thor": [],
+  "Venom": [],
+  "The Thing": ["thing", "ben grimm"],
+  "Emma Frost": ["emma", "frost"],
+  "Angela": [],
+  "Rogue": [],
+  "Devil Dinosaur": ["devil dino", "dinosaur"],
+  "Black Cat": [],
+  "Black Panther": ["panther"],
+  "Black Widow": ["widow"],
+  "Blade": [],
+  "Cyclops": ["cyclop"],
+  "Daredevil": ["dare devil"],
+  "Elsa Bloodstone": ["elsa", "bloodstone"],
+  "Hawkeye": ["hawk eye"],
+  "Hela": ["hella"],
+  "Human Torch": ["torch"],
+  "Iron Fist": [],
+  "Iron Man": [],
+  "Magik": ["magic"],
+  "Mister Fantastic": ["mr fantastic", "fantastic", "reed richards"],
+  "Moon Knight": ["moon night", "moonlight"],
+  "Namor": ["nay more", "namore"],
+  "Phoenix": ["jean grey"],
+  "Psylocke": ["psy lock", "sy lock", "cy lock"],
+  "The Punisher": ["punisher", "frank castle"],
+  "Scarlet Witch": ["scarlet", "wanda"],
+  "Spider-Man": ["spider man", "spiderman", "spidey"],
+  "Squirrel Girl": ["squirrel"],
+  "Star-Lord": ["star lord", "starlord"],
+  "Storm": [],
+  "Winter Soldier": ["bucky", "winter"],
+  "Wolverine": ["logan"],
+  "Adam Warlock": ["warlock", "adam"],
+  "Cloak & Dagger": ["cloak and dagger", "cloak", "dagger"],
+  "Gambit": [],
+  "Invisible Woman": ["invisible", "sue storm"],
+  "Jeff the Land Shark": ["jeff", "land shark", "the shark"],
+  "Loki": ["low key", "lowkey"],
+  "Luna Snow": ["luna"],
+  "Mantis": [],
+  "Rocket Raccoon": ["rocket", "raccoon"],
+  "Ultron": [],
+  "White Fox": ["fox"],
+  "Deadpool": ["dead pool", "wade"],
+};
+// Longest aliases first so "black panther" wins before "panther", etc.
+const VOICE_LOOKUP = [];
+HEROES.forEach(h => {
+  const norm = s => s.toLowerCase().replace(/[-&.,]/g, " ").replace(/\s+/g, " ").trim();
+  [h.name, ...(ALIASES[h.name] || [])].forEach(a => VOICE_LOOKUP.push({ alias: norm(a), hero: h }));
+});
+VOICE_LOOKUP.sort((a, b) => b.alias.length - a.alias.length);
+
+function parseHeroesFromSpeech(text) {
+  let t = " " + text.toLowerCase().replace(/[-&.,!?]/g, " ").replace(/\s+/g, " ").trim() + " ";
+  const found = [];
+  VOICE_LOOKUP.forEach(({ alias, hero }) => {
+    const needle = " " + alias + " ";
+    if (t.includes(needle)) {
+      if (!found.includes(hero)) found.push(hero);
+      t = t.split(needle).join(" "); // consume so "cloak and dagger" can't re-match "dagger"
+    }
+  });
+  return found;
+}
+
+let recog = null, voiceOn = false;
+function speak(text) {
+  if (!document.getElementById("voice-speak").checked) return;
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.15;
+    speechSynthesis.speak(u);
+  } catch {}
+}
+function voiceStatus(msg, cls) {
+  const el = document.getElementById("voice-status");
+  el.textContent = msg;
+  el.className = "scan-status" + (cls ? " " + cls : "");
+}
+function toggleVoice() {
+  if (voiceOn) { stopVoice(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    voiceStatus("This browser has no speech recognition — open the app in Edge or Chrome.", "err");
+    return;
+  }
+  recog = new SR();
+  recog.lang = "en-US";
+  recog.continuous = true;
+  recog.interimResults = true;
+  recog.onresult = e => {
+    let finalText = "", interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalText += e.results[i][0].transcript + " ";
+      else interim += e.results[i][0].transcript;
+    }
+    if (interim) voiceStatus('Hearing: "' + interim.trim() + '"', "");
+    if (finalText.trim()) handleVoiceCommand(finalText.trim());
+  };
+  recog.onerror = e => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      voiceStatus("Microphone blocked — allow mic access for this site and try again.", "err");
+      stopVoice();
+    } else if (e.error !== "no-speech" && e.error !== "aborted") {
+      voiceStatus("Voice error: " + e.error, "err");
+    }
+  };
+  recog.onend = () => { // Chrome stops after silence; keep listening while toggled on
+    if (voiceOn) { try { recog.start(); } catch {} }
+  };
+  try { recog.start(); } catch {}
+  voiceOn = true;
+  document.getElementById("voice-btn").classList.add("live");
+  document.getElementById("voice-btn").innerHTML = "&#127908; Listening&hellip;";
+  voiceStatus("Listening — call out the enemy heroes.", "ok");
+  speak("Listening");
+}
+function stopVoice() {
+  voiceOn = false;
+  if (recog) { try { recog.stop(); } catch {} recog = null; }
+  document.getElementById("voice-btn").classList.remove("live");
+  document.getElementById("voice-btn").innerHTML = "&#127908; Voice input";
+  voiceStatus("Voice off.", "");
+}
+function handleVoiceCommand(text) {
+  const t = text.toLowerCase();
+  if (/\b(clear|reset|start over)\b/.test(t)) {
+    clearSquad("enemy");
+    voiceStatus("Cleared enemy squad.", "ok");
+    speak("Cleared");
+    return;
+  }
+  const removing = /\b(remove|drop|not|scratch|take out)\b/.test(t);
+  const heroes = parseHeroesFromSpeech(text);
+  if (heroes.length) {
+    const done = [];
+    heroes.forEach(h => {
+      const inSquad = squads.enemy.includes(h);
+      if (removing && inSquad) { togglePick("enemy", h); done.push(h.name); }
+      else if (!removing && !inSquad && squads.enemy.length < 6) { togglePick("enemy", h); done.push(h.name); }
+    });
+    if (done.length) {
+      voiceStatus((removing ? "Removed: " : "Added: ") + done.join(", ") +
+        " (" + squads.enemy.length + "/6)", "ok");
+      speak(done.join(", ") + (removing ? " removed" : ""));
+    }
+    if (!removing && squads.enemy.length === 6) { speakIntel(lockComp()); return; }
+  }
+  if (/\block\b/.test(t)) speakIntel(lockComp());
+  else if (!heroes.length) voiceStatus('Heard: "' + text + '" — no hero recognized.', "");
+}
+function speakIntel(results) {
+  if (!results) return;
+  if (!results.length) { speak("Comp locked. Balanced comp, no standout weakness."); return; }
+  const lines = results.map(r =>
+    r.headline + ". Pick " + r.picks.slice(0, 3).map(h => h.name).join(", ") + ".");
+  speak("Comp locked. " + lines.join(" "));
+}
 
 /* ============ SCREENSHOT SCAN (Claude vision) ============ */
 function setRegion(r) {
