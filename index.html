@@ -243,6 +243,7 @@
     border-radius: 8px; padding: 12px 14px;
   }
   .intel-card .headline { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .intel-card.warn .headline { color: var(--gold); }
   .intel-card .reason { font-size: 13px; color: var(--dim); margin-bottom: 8px; }
   .intel-card .picks { display: flex; gap: 6px; flex-wrap: wrap; }
   .pick-chip {
@@ -353,6 +354,10 @@
       <div class="name-chips" id="squad-chips"></div>
       <div class="balance" id="squad-balance"></div>
       <div class="warnings" id="squad-warnings"></div>
+      <div id="team-plan-panel" style="display:none">
+        <h2 class="intel-heading" style="margin-top:16px">Team Plan</h2>
+        <div class="intel-cards" id="team-plan-cards"></div>
+      </div>
     </div>
     <!-- Right: enemy squad + counter intel -->
     <div class="panel">
@@ -595,6 +600,95 @@ function renderBalance() {
   }
   document.getElementById("squad-warnings").innerHTML =
     w.map(x => `<div class="warning">${x}</div>`).join("");
+  renderTeamPlan();
+}
+
+/* ============ TEAM PLAN ENGINE (your comp's strengths / weaknesses) ============
+   Grounded in the Marvel Rivals "meta triangle": dive beats poke, poke beats
+   brawl, brawl beats dive — plus each archetype's win condition and weakness.
+   Sources (researched 2026-07): Mobalytics team-comp guide, Marvel Church
+   compositions, Turboboost dive guide. REFRESH each patch alongside the roster
+   update, since hero balance can shift which archetypes are strong.
+   ============================================================ */
+const ARCHETYPES = {
+  dive: {
+    tone: "plan",
+    headline: "Dive comp — commit together",
+    reason: "You have the mobility to collapse on one target. Call the same kill — usually an isolated support — and jump together; burst them before the team stabilises, then reset. Staggered solo dives just feed. You beat poke comps, but grouped brawl and anti-dive picks (Peni, Loki, peel supports) are your worst matchup.",
+  },
+  brawl: {
+    tone: "plan",
+    headline: "Brawl comp — group and grind",
+    reason: "Push as one ball and force a close-range grind in tight spaces — chokes and rooms, not open ground. Your sustain wins the slugfest and sticking together shuts down dive. Watch for poke comps that kite you: use shields and cover to close the gap fast.",
+  },
+  poke: {
+    tone: "plan",
+    headline: "Poke comp — win the range war",
+    reason: "Your damage is best at range. Hold high ground and long sightlines, chip behind cover, and only commit once they're low or split. You kite brawl deathballs all day. Your danger is dive — keep peel/anti-dive and don't get caught alone.",
+  },
+};
+const TEAM_PLAN_RULES = [
+  {
+    when: (t, roles) => roles.Strategist >= 3,
+    tone: "warn",
+    headline: "Three supports — can you close?",
+    reason: "Massive sustain and uptime — you'll out-heal poke and win long fights. But with so few damage dealers, actually securing kills is hard; you can stall a point but struggle to end fights. Make sure someone has real burst, and protect that carry.",
+  },
+  {
+    when: (t, roles) => roles.Vanguard >= 3,
+    tone: "warn",
+    headline: "Triple frontline — where's the damage?",
+    reason: "Tons of HP and space, great for stalling onto a point and brawling. The risk is low kill pressure — poke comps kite and chip you, and you may not burst anyone down. Force close range with your bodies and pressure their backline.",
+  },
+  {
+    when: t => t.shield >= 2,
+    tone: "plan",
+    headline: "Shield core — play the front",
+    reason: "Double barriers let you hold space and soak poke. Anchor a spot and let your DPS work behind the walls — just don't get flanked or collapsed on. You're strong but slow, so respect brawl and dive trying to get past the shields.",
+  },
+  {
+    when: t => t.flying >= 2,
+    tone: "plan",
+    headline: "Air power — attack the angles",
+    reason: "Your flyers hit angles melee can't reach and pressure the backline. Respect hitscan and snipers (Hawkeye, Black Widow, Punisher) — they shred flyers, so weave cover and don't hover in the open.",
+  },
+  {
+    when: (t, roles, n) => n >= 4 && t["anti-dive"] === 0 && t.peel === 0 && roles.Strategist >= 1,
+    tone: "warn",
+    headline: "Backline exposed to dive",
+    reason: "No anti-dive or peel in the comp — if they run divers, your supports get picked off. Pair your healers, hug cover, and consider one peel/anti-dive pick (Peni, Namor, The Thing, Invisible Woman, Loki).",
+  },
+];
+const FLEX_FALLBACK = {
+  tone: "plan",
+  headline: "Flexible comp — adapt to them",
+  reason: "No single identity, so lean into flexibility: group to brawl, spread to poke, collapse to dive. Read the enemy comp with Counter Intel on the right and shape each fight to punish theirs.",
+};
+function renderTeamPlan() {
+  const squad = squads.my;
+  const panel = document.getElementById("team-plan-panel");
+  const cardsEl = document.getElementById("team-plan-cards");
+  if (squad.length < 2) { panel.style.display = "none"; cardsEl.innerHTML = ""; return; }
+  const tags = {};
+  const roles = { Vanguard: 0, Duelist: 0, Strategist: 0, Multi: 0 };
+  squad.forEach(h => { roles[h.role]++; h.tags.forEach(x => tags[x] = (tags[x] || 0) + 1); });
+  const t = new Proxy(tags, { get: (o, k) => o[k] || 0 });
+  const cards = [];
+  // Primary identity: the strongest archetype signal (needs 3+ to count)
+  const scores = { dive: t.dive, brawl: t.brawl, poke: t.poke + t.hitscan + t.sniper };
+  let best = null, bestVal = 2;
+  for (const k in scores) if (scores[k] > bestVal) { bestVal = scores[k]; best = k; }
+  if (best) cards.push(ARCHETYPES[best]);
+  // Structural strengths / weaknesses
+  TEAM_PLAN_RULES.forEach(r => { if (r.when(t, roles, squad.length)) cards.push(r); });
+  if (!cards.length && squad.length >= 4) cards.push(FLEX_FALLBACK);
+  const show = cards.slice(0, 4);
+  panel.style.display = show.length ? "" : "none";
+  cardsEl.innerHTML = show.map(r =>
+    `<div class="intel-card ${r.tone === "warn" ? "warn" : ""}">
+      <div class="headline">${r.headline}</div>
+      <div class="reason">${r.reason}</div>
+    </div>`).join("");
 }
 
 /* ============ COUNTER INTEL RULE ENGINE ============ */
