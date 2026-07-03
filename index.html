@@ -332,7 +332,7 @@
       <li><b>Build both teams</b> &mdash; Pick <b>your</b> heroes and the <b>enemy's</b> from the hero list; use the <b>My Team / Enemy Team</b> toggle to choose which side you're filling. Your side shows role balance and warnings.</li>
       <li><b>Counter Intel</b> &mdash; Hit <b>Lock in comp</b> for counter-pick suggestions based on the enemy lineup.</li>
       <li><b>&#127908; Voice input</b> &mdash; Tap the mic and just say enemy hero names (works in Edge/Chrome). Say <span class="dim">&ldquo;lock it in&rdquo;</span> for spoken counters.</li>
-      <li><b>Ult Watch</b> &mdash; The third panel tracks enemy ultimate charge with countdown rings.</li>
+      <li><b>Ult Watch</b> &mdash; The third panel tracks enemy ultimate charge with countdown rings. Say <span class="dim">&ldquo;Hela ulted&rdquo;</span> to start a ring hands-free.</li>
     </ul>
     <button class="btn primary" onclick="dismissIntro()">Got it</button>
   </div>
@@ -362,7 +362,7 @@
         <label class="paste-hint" title="Reads confirmations and counter intel out loud so you never look away from the game">
           <input type="checkbox" id="voice-speak" checked> speak back
         </label>
-        <span class="scan-status" id="voice-status">Say hero names ("Venom, Spidey, Luna") &middot; "remove Venom" &middot; "clear" &middot; "lock it in"</span>
+        <span class="scan-status" id="voice-status">Say hero names ("Venom, Spidey") &middot; "remove Venom" &middot; "clear" &middot; "lock it in" &middot; "Hela ulted"</span>
       </div>
       <div id="intel-panel" style="display:none">
         <h2 class="intel-heading">Counter Intel</h2>
@@ -709,7 +709,7 @@ function renderUltSearch(q) {
 const ULT_R = 40; // ring radius (compact for the narrow pane)
 function addUltTimer(hero) {
   if (ultTimers[hero.name]) return;
-  ultTimers[hero.name] = { remaining: 0, total: 90, interval: null };
+  ultTimers[hero.name] = { remaining: 0, total: 80, interval: null };
   const card = document.createElement("div");
   card.className = "timer-card";
   card.id = "timer-" + cssId(hero.name);
@@ -724,7 +724,7 @@ function addUltTimer(hero) {
       <text class="t-time" x="48" y="53" text-anchor="middle">READY</text>
     </svg>
     <div class="t-controls">
-      <input type="number" value="90" min="5" max="600" title="Ult timer seconds (editable — exact charge shifts patch to patch)">
+      <input type="number" value="80" min="5" max="600" title="Ult timer seconds (editable — exact charge shifts patch to patch, and faster while dealing damage/healing)">
       <button class="btn" data-act="start">Used!</button>
       <button class="btn" data-act="remove">&times;</button>
     </div>`;
@@ -742,7 +742,7 @@ function startUlt(name) {
   const card = document.getElementById("timer-" + cssId(name));
   card.classList.remove("done");
   clearInterval(t.interval);
-  t.total = Math.max(5, parseInt(card.querySelector("input").value, 10) || 90);
+  t.total = Math.max(5, parseInt(card.querySelector("input").value, 10) || 80);
   t.remaining = t.total;
   tickUlt(name);
   t.interval = setInterval(() => tickUlt(name), 1000);
@@ -775,7 +775,9 @@ function cssId(s) { return s.replace(/[^a-z0-9]/gi, "-").toLowerCase(); }
 /* ============ VOICE INPUT (hands-free enemy comp) ============
    Uses the browser's built-in Web Speech API — no API key needed.
    Say hero names to fill the enemy squad; "remove X", "clear",
-   "lock it in". Auto-locks at 6 and reads the intel back out loud. */
+   "lock it in". Auto-locks at 6 and reads the intel back out loud.
+   "<hero> ulted/ult/ulting/ultimate" starts that hero's ult timer
+   instead of adding them to the squad. */
 const ALIASES = {
   "Captain America": ["cap", "steve rogers"],
   "Doctor Strange": ["strange", "dr strange", "doc strange"],
@@ -917,8 +919,19 @@ function handleVoiceCommand(text) {
     speak("Cleared");
     return;
   }
-  const removing = /\b(remove|drop|not|scratch|take out)\b/.test(t);
   const heroes = parseHeroesFromSpeech(text);
+  // "<hero> ulted / ult / ulting / ultimate" -> start that hero's ult timer
+  // (matches ult, ulted, ulting, ults, ultie, ultimate; not adult/result/ultra)
+  const ulting = /\bult(ed|ing|imate|imated|s|ie)?\b/.test(t);
+  if (ulting && heroes.length) {
+    const names = [];
+    heroes.forEach(h => { addUltTimer(h); startUlt(h.name); names.push(h.name); });
+    const secs = ultTimers[names[0]] ? ultTimers[names[0]].total : 80;
+    voiceStatus("Ult timer started: " + names.join(", ") + " (" + secs + "s)", "ok");
+    speak(names.join(", ") + (names.length > 1 ? " ults tracked" : " ult, tracking"));
+    return;
+  }
+  const removing = /\b(remove|drop|not|scratch|take out)\b/.test(t);
   if (heroes.length) {
     const done = [];
     heroes.forEach(h => {
