@@ -464,6 +464,44 @@ const ROLES = ["Vanguard", "Duelist", "Strategist", "Multi"];
 const byName = {};
 HEROES.forEach(h => byName[h.name.toLowerCase()] = h);
 
+/* Signature color per hero, drawn from their in-game art — used as the filled
+   hex background (falls back to the role color if a hero is missing). Text
+   color is auto-picked for contrast by hexTextColor(). Add new heroes here
+   when they launch (Season 9: Jubilee, The Hood). */
+const HERO_COLORS = {
+  // Vanguards
+  "Captain America": "#2f4b93", "Doctor Strange": "#9c2530", "Groot": "#5f7538",
+  "Hulk": "#4c9440", "Magneto": "#8f2f3a", "Peni Parker": "#c8452f",
+  "Thor": "#3a67ab", "Venom": "#24262f", "The Thing": "#b46a2f",
+  "Emma Frost": "#d4d8de", "Angela": "#b28a38", "Rogue": "#46905a",
+  "Devil Dinosaur": "#c23b2f",
+  // Duelists
+  "Black Cat": "#34303f", "Black Panther": "#3a2f5c", "Black Widow": "#7c2731",
+  "Blade": "#33282b", "Cyclops": "#2f5aa8", "Daredevil": "#9c2531",
+  "Elsa Bloodstone": "#a83c3a", "Hawkeye": "#5f57a8", "Hela": "#1f7a63",
+  "Human Torch": "#e06a24", "Iron Fist": "#3d9450", "Iron Man": "#b83a2c",
+  "Magik": "#6b3f9c", "Mister Fantastic": "#2f6bb0", "Moon Knight": "#c8ced6",
+  "Namor": "#2f8f7a", "Phoenix": "#a8923a", "Psylocke": "#7a44a0",
+  "The Punisher": "#3f444d", "Scarlet Witch": "#a12836", "Spider-Man": "#c0303a",
+  "Squirrel Girl": "#9f5f2f", "Star-Lord": "#3a63a0", "Storm": "#4a6ea0",
+  "Winter Soldier": "#49525a", "Wolverine": "#cfa72f",
+  // Strategists
+  "Adam Warlock": "#c39a34", "Cloak & Dagger": "#2f3550", "Gambit": "#b8437e",
+  "Invisible Woman": "#3f77bd", "Jeff the Land Shark": "#52a8d6", "Loki": "#2f8050",
+  "Luna Snow": "#3f9fc9", "Mantis": "#4a9c5a", "Rocket Raccoon": "#7a5540",
+  "Ultron": "#4a4f59", "White Fox": "#40a59d",
+  // Multi
+  "Deadpool": "#a52a2c",
+  // Upcoming — Season 9
+  "Jubilee": "#d1a63a", "The Hood": "#7a2f3a",
+};
+// Black or white text depending on how light the hero's color is (perceived luminance).
+function hexTextColor(bg) {
+  const m = bg.replace("#", "");
+  const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 140 ? "#0b0e14" : "#f5f7fa";
+}
+
 /* ============ STATE ============ */
 const squads = { my: [], enemy: [] };
 let pickTarget = "my"; // which team the shared hero picker adds to
@@ -497,7 +535,11 @@ function renderSquad(which) {
     hex.className = "hex" + (hero ? " filled " + hero.role : "");
     hex.textContent = hero ? hero.name : "+";
     hex.title = hero ? hero.name + " (click to remove)" : "Empty slot";
-    if (hero) hex.onclick = () => togglePick(which, hero);
+    if (hero) {
+      const c = HERO_COLORS[hero.name];
+      if (c) { hex.style.background = c; hex.style.color = hexTextColor(c); }
+      hex.onclick = () => togglePick(which, hero);
+    }
     slotsEl.appendChild(hex);
   }
   renderPicker();
