@@ -15,6 +15,7 @@
     --accent: #37e0c8;
     --gold: #f0b94e;
     --red: #e5534b;
+    --ready: #ffc531;
     --vanguard: #5b8def;
     --duelist: #e5534b;
     --strategist: #4fc26b;
@@ -263,10 +264,15 @@
     background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
     padding: 10px 8px; text-align: center;
   }
-  .timer-card.done { border-color: var(--accent); animation: flash 0.6s ease 4; }
-  @keyframes flash {
-    0%, 100% { box-shadow: none; }
-    50% { box-shadow: 0 0 18px var(--accent); }
+  .timer-card.done {
+    border-color: var(--ready);
+    animation: ready-pulse 1.1s ease-in-out infinite;
+  }
+  .timer-card.done .ring-fg { stroke: var(--ready); }
+  .timer-card.done .t-time { fill: var(--ready); font-size: 15px; }
+  @keyframes ready-pulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(255,197,49,0.45); border-color: var(--ready); }
+    50%      { box-shadow: 0 0 22px var(--ready); border-color: #fff; }
   }
   .timer-card .t-name { font-weight: 700; font-size: 12.5px; margin-bottom: 6px; word-break: break-word; }
   .timer-card svg { display: block; margin: 0 auto 6px; }
@@ -693,7 +699,8 @@ function lockComp() {
 }
 
 /* ============ ULT WATCH ============ */
-const ultTimers = {}; // name -> { remaining, total, interval }
+const ultTimers = {}; // name -> { remaining, total, interval, readyTimeout }
+const READY_LINGER_MS = 30000; // auto-remove a "ready" ult after 30s so swaps don't clog the view
 function renderUltSearch(q) {
   const el = document.getElementById("ult-results");
   q = q.trim().toLowerCase();
@@ -711,7 +718,7 @@ function renderUltSearch(q) {
 const ULT_R = 40; // ring radius (compact for the narrow pane)
 function addUltTimer(hero) {
   if (ultTimers[hero.name]) return;
-  ultTimers[hero.name] = { remaining: 0, total: 80, interval: null };
+  ultTimers[hero.name] = { remaining: 0, total: 80, interval: null, readyTimeout: null };
   const card = document.createElement("div");
   card.className = "timer-card";
   card.id = "timer-" + cssId(hero.name);
@@ -744,6 +751,8 @@ function startUlt(name) {
   const card = document.getElementById("timer-" + cssId(name));
   card.classList.remove("done");
   clearInterval(t.interval);
+  clearTimeout(t.readyTimeout);   // cancel any pending "ready" auto-remove
+  document.getElementById("ult-timers").prepend(card); // freshly used ult jumps to the top
   t.total = Math.max(5, parseInt(card.querySelector("input").value, 10) || 80);
   t.remaining = t.total;
   tickUlt(name);
@@ -760,6 +769,8 @@ function tickUlt(name) {
     ring.style.strokeDashoffset = 0;
     text.textContent = "READY";
     card.classList.add("done");
+    clearTimeout(t.readyTimeout);
+    t.readyTimeout = setTimeout(() => removeUlt(name), READY_LINGER_MS);
     return;
   }
   ring.style.strokeDashoffset = C * (1 - t.remaining / t.total);
@@ -768,6 +779,7 @@ function tickUlt(name) {
 }
 function removeUlt(name) {
   clearInterval(ultTimers[name].interval);
+  clearTimeout(ultTimers[name].readyTimeout);
   delete ultTimers[name];
   document.getElementById("timer-" + cssId(name)).remove();
   updateUltEmpty();
