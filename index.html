@@ -362,8 +362,9 @@
         <label class="paste-hint" title="Reads confirmations and counter intel out loud so you never look away from the game">
           <input type="checkbox" id="voice-speak" checked> speak back
         </label>
-        <span class="scan-status" id="voice-status">Say hero names ("Venom, Spidey") &middot; "remove Venom" &middot; "swapped Venom for Magneto" &middot; "Hela ulted" &middot; "clear" &middot; "lock it in"</span>
+        <span class="scan-status" id="voice-status">Say hero names ("Venom, Spidey") &middot; "remove Venom" &middot; "swapped Venom for Magneto" &middot; "Hela ultimate" &middot; "clear" &middot; "lock it in"</span>
       </div>
+      <div class="paste-hint" id="voice-heard" style="margin-top:6px"></div>
       <div id="intel-panel" style="display:none">
         <h2 class="intel-heading">Counter Intel</h2>
         <div class="intel-cards" id="intel-cards"></div>
@@ -374,6 +375,7 @@
       <h2>Ult Watch</h2>
       <input type="text" id="ult-search" placeholder="Search a hero to track their ult..."
              oninput="renderUltSearch(this.value)">
+      <div class="paste-hint" style="margin-top:8px">&#127908; Or say &ldquo;Hela ultimate&rdquo; to start a ring &mdash; this uses the mic in the <b>Enemy Squad</b> panel. (Say the full word &ldquo;ultimate&rdquo; &mdash; &ldquo;ult&rdquo; often mis-hears.)</div>
       <div id="ult-results"></div>
       <div id="ult-timers"></div>
       <div class="ult-empty" id="ult-empty">No ults tracked yet. Search a hero above, or say a hero's name to start a timer.</div>
@@ -854,6 +856,7 @@ function parseHeroesFromSpeech(text) {
 }
 
 let recog = null, voiceOn = false;
+let lastSpokenHero = null; // most recent hero heard, for split "<hero>"..."ulted" phrases
 function speak(text) {
   if (!document.getElementById("voice-speak").checked) return;
   try {
@@ -874,6 +877,13 @@ function toggleVoice() {
     voiceStatus("This browser has no speech recognition — open the app in Edge or Chrome.", "err");
     return;
   }
+  // The Web Speech API object exists inside Electron shells (e.g. an embedded
+  // preview panel) but has no speech service behind it, so it silently never
+  // hears anything. Detect that and tell the user to use a real browser.
+  if (/electron/i.test(navigator.userAgent)) {
+    voiceStatus("Voice needs a real Edge or Chrome window — this preview panel can't reach the speech service. Open the app's URL in Edge/Chrome.", "err");
+    return;
+  }
   recog = new SR();
   recog.lang = "en-US";
   recog.continuous = true;
@@ -885,7 +895,13 @@ function toggleVoice() {
       else interim += e.results[i][0].transcript;
     }
     if (interim) voiceStatus('Hearing: "' + interim.trim() + '"', "");
-    if (finalText.trim()) handleVoiceCommand(finalText.trim());
+    if (finalText.trim()) {
+      const heard = finalText.trim();
+      const heardEl = document.getElementById("voice-heard");
+      if (heardEl) heardEl.textContent = '🗣 heard: "' + heard + '"';
+      console.log("[voice] heard:", heard);
+      handleVoiceCommand(heard);
+    }
   };
   recog.onerror = e => {
     if (e.error === "not-allowed" || e.error === "service-not-allowed") {
@@ -921,15 +937,23 @@ function handleVoiceCommand(text) {
     return;
   }
   const heroes = parseHeroesFromSpeech(text);
+  if (heroes.length) lastSpokenHero = heroes[heroes.length - 1];
   // "<hero> ulted / ult / ulting / ultimate" -> start that hero's ult timer
-  // (matches ult, ulted, ulting, ults, ultie, ultimate; not adult/result/ultra)
-  const ulting = /\bult(ed|ing|imate|imated|s|ie)?\b/.test(t);
-  if (ulting && heroes.length) {
-    const names = [];
-    heroes.forEach(h => { addUltTimer(h); startUlt(h.name); names.push(h.name); });
-    const secs = ultTimers[names[0]] ? ultTimers[names[0]].total : 80;
-    voiceStatus("Ult timer started: " + names.join(", ") + " (" + secs + "s)", "ok");
-    speak(names.join(", ") + (names.length > 1 ? " ults tracked" : " ult, tracking"));
+  // (matches ult, ulted, ulting, ults, ultie, ultimate; not adult/result/ultra).
+  // If the speech engine splits it ("Hela" ... then "ulted"), fall back to the
+  // most recently spoken hero so the ult still registers.
+  const ulting = /\bult(imate[sd]?|ing|ed|s|ie)?\b/.test(t);
+  if (ulting) {
+    const ultHeroes = heroes.length ? heroes : (lastSpokenHero ? [lastSpokenHero] : []);
+    if (ultHeroes.length) {
+      const names = [];
+      ultHeroes.forEach(h => { addUltTimer(h); startUlt(h.name); names.push(h.name); });
+      const secs = ultTimers[names[0]] ? ultTimers[names[0]].total : 80;
+      voiceStatus("Ult timer started: " + names.join(", ") + " (" + secs + "s)", "ok");
+      speak(names.join(", ") + (names.length > 1 ? " ults tracked" : " ult, tracking"));
+      return;
+    }
+    voiceStatus('Heard an ult but no hero — say the hero name first, e.g. "Hela ultimate".', "");
     return;
   }
   // "they swapped X for Y" / "switched to Y" / "X swapped out" -> update enemy squad.
