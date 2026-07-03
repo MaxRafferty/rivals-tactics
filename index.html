@@ -141,18 +141,6 @@
   .hex.filled.Strategist { background: var(--strategist); }
   .hex.filled.Multi { background: var(--multi); }
 
-  /* Full-name readout chips */
-  .name-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; min-height: 26px; }
-  .name-chip {
-    font-size: 13px; padding: 4px 12px; border-radius: 14px; font-weight: 600;
-    border: 1px solid;
-  }
-  .name-chip.Vanguard { color: var(--vanguard); border-color: var(--vanguard); }
-  .name-chip.Duelist { color: var(--duelist); border-color: var(--duelist); }
-  .name-chip.Strategist { color: var(--strategist); border-color: var(--strategist); }
-  .name-chip.Multi { color: var(--multi); border-color: var(--multi); }
-  .name-chips .empty { color: var(--dim); font-size: 13px; padding: 4px 0; }
-
   /* Voice / action controls */
   .scan-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   .btn {
@@ -351,7 +339,6 @@
         <div class="hex-row" id="squad-slots"></div>
         <button class="btn danger" onclick="clearSquad('my')">Clear</button>
       </div>
-      <div class="name-chips" id="squad-chips"></div>
       <div class="balance" id="squad-balance"></div>
       <div class="warnings" id="squad-warnings"></div>
       <div id="team-plan-panel" style="display:none">
@@ -367,7 +354,6 @@
         <button class="btn primary" onclick="lockComp()">Lock in comp</button>
         <button class="btn danger" onclick="clearSquad('enemy')">Clear</button>
       </div>
-      <div class="name-chips" id="enemy-chips"></div>
       <div class="scan-row">
         <button class="btn" id="voice-btn" onclick="toggleVoice()">&#127908; Voice input</button>
         <label class="paste-hint" title="Reads confirmations and counter intel out loud so you never look away from the game">
@@ -504,7 +490,6 @@ function setPickTarget(which) {
 function renderSquad(which) {
   const squad = squads[which];
   const slotsEl = document.getElementById(which === "my" ? "squad-slots" : "enemy-slots");
-  const chipsEl = document.getElementById(which === "my" ? "squad-chips" : "enemy-chips");
   slotsEl.innerHTML = "";
   for (let i = 0; i < 6; i++) {
     const hero = squad[i];
@@ -515,9 +500,6 @@ function renderSquad(which) {
     if (hero) hex.onclick = () => togglePick(which, hero);
     slotsEl.appendChild(hex);
   }
-  chipsEl.innerHTML = squad.length
-    ? squad.map(h => `<span class="name-chip ${h.role}">${h.name}</span>`).join("")
-    : `<span class="empty">No heroes selected — pick below to build your squad.</span>`;
   renderPicker();
   if (which === "my") renderBalance();
   if (which === "enemy") document.getElementById("intel-panel").style.display = "none";
