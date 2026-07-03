@@ -362,7 +362,7 @@
         <label class="paste-hint" title="Reads confirmations and counter intel out loud so you never look away from the game">
           <input type="checkbox" id="voice-speak" checked> speak back
         </label>
-        <span class="scan-status" id="voice-status">Say hero names ("Venom, Spidey") &middot; "remove Venom" &middot; "clear" &middot; "lock it in" &middot; "Hela ulted"</span>
+        <span class="scan-status" id="voice-status">Say hero names ("Venom, Spidey") &middot; "remove Venom" &middot; "swapped Venom for Magneto" &middot; "Hela ulted" &middot; "clear" &middot; "lock it in"</span>
       </div>
       <div id="intel-panel" style="display:none">
         <h2 class="intel-heading">Counter Intel</h2>
@@ -777,7 +777,8 @@ function cssId(s) { return s.replace(/[^a-z0-9]/gi, "-").toLowerCase(); }
    Say hero names to fill the enemy squad; "remove X", "clear",
    "lock it in". Auto-locks at 6 and reads the intel back out loud.
    "<hero> ulted/ult/ulting/ultimate" starts that hero's ult timer
-   instead of adding them to the squad. */
+   instead of adding them to the squad. "swapped/switched X for Y"
+   updates the enemy squad (who's already on the team goes out). */
 const ALIASES = {
   "Captain America": ["cap", "steve rogers"],
   "Doctor Strange": ["strange", "dr strange", "doc strange"],
@@ -929,6 +930,33 @@ function handleVoiceCommand(text) {
     const secs = ultTimers[names[0]] ? ultTimers[names[0]].total : 80;
     voiceStatus("Ult timer started: " + names.join(", ") + " (" + secs + "s)", "ok");
     speak(names.join(", ") + (names.length > 1 ? " ults tracked" : " ult, tracking"));
+    return;
+  }
+  // "they swapped X for Y" / "switched to Y" / "X swapped out" -> update enemy squad.
+  // Direction is decided by who's already on the enemy team (out) vs not (in),
+  // so phrasing order doesn't matter.
+  const swapping = /\b(swap|swapped|swapping|switch|switched|switching)\b/.test(t);
+  if (swapping && heroes.length) {
+    const toRemove = heroes.filter(h => squads.enemy.includes(h));
+    const toAdd = heroes.filter(h => !squads.enemy.includes(h));
+    toRemove.forEach(h => togglePick("enemy", h)); // remove first to free slots
+    const added = [];
+    toAdd.forEach(h => { if (squads.enemy.length < 6) { togglePick("enemy", h); added.push(h.name); } });
+    const outNames = toRemove.map(h => h.name);
+    if (outNames.length && added.length) {
+      voiceStatus("Swapped: " + outNames.join(", ") + " → " + added.join(", ") +
+        " (" + squads.enemy.length + "/6)", "ok");
+      speak("Swapped to " + added.join(", "));
+    } else if (added.length) {
+      voiceStatus("Swapped in: " + added.join(", ") + " (" + squads.enemy.length + "/6)", "ok");
+      speak(added.join(", ") + " in");
+    } else if (outNames.length) {
+      voiceStatus("Swapped out: " + outNames.join(", ") + " (" + squads.enemy.length + "/6)", "ok");
+      speak(outNames.join(", ") + " out");
+    } else {
+      voiceStatus('Heard a swap but nothing changed — enemy squad may be full (6/6).', "");
+    }
+    if (squads.enemy.length === 6) speakIntel(lockComp());
     return;
   }
   const removing = /\b(remove|drop|not|scratch|take out)\b/.test(t);
