@@ -211,13 +211,14 @@
     border-color: var(--gold);
   }
 
-  /* Combined Team Comps layout */
+  /* Single-screen three-pane layout: your squad | enemy + intel | ult watch */
   .comp-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
     align-items: stretch; margin-bottom: 16px;
   }
   .comp-grid .panel { margin-bottom: 0; }
-  @media (max-width: 760px) { .comp-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 1100px) { .comp-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 720px)  { .comp-grid { grid-template-columns: 1fr; } }
   .intel-panel-gap, #intel-panel { margin-top: 16px; }
   .intel-heading { margin-top: 0; }
   .picker-head {
@@ -251,31 +252,33 @@
 
   /* Ult Watch */
   #ult-search {
-    width: 100%; max-width: 420px; background: var(--bg); border: 1px solid var(--line);
+    width: 100%; background: var(--bg); border: 1px solid var(--line);
     color: var(--text); padding: 9px 12px; border-radius: 6px; font-size: 14px;
   }
   #ult-results { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  #ult-timers { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; }
+  #ult-timers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  #ult-timers:empty { display: none; }
+  .ult-empty { font-size: 13px; color: var(--dim); margin-top: 12px; line-height: 1.4; }
   .timer-card {
     background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
-    padding: 14px; width: 190px; text-align: center;
+    padding: 10px 8px; text-align: center;
   }
   .timer-card.done { border-color: var(--accent); animation: flash 0.6s ease 4; }
   @keyframes flash {
     0%, 100% { box-shadow: none; }
     50% { box-shadow: 0 0 18px var(--accent); }
   }
-  .timer-card .t-name { font-weight: 700; font-size: 14px; margin-bottom: 8px; }
-  .timer-card svg { display: block; margin: 0 auto 8px; }
+  .timer-card .t-name { font-weight: 700; font-size: 12.5px; margin-bottom: 6px; word-break: break-word; }
+  .timer-card svg { display: block; margin: 0 auto 6px; }
   .ring-bg { stroke: var(--line); }
   .ring-fg { stroke: var(--accent); transition: stroke-dashoffset 0.3s linear; }
-  .timer-card .t-time { font-size: 20px; font-weight: 700; fill: var(--text); }
-  .timer-card .t-controls { display: flex; gap: 6px; justify-content: center; margin-top: 6px; }
+  .timer-card .t-time { font-size: 16px; font-weight: 700; fill: var(--text); }
+  .timer-card .t-controls { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; margin-top: 4px; }
   .timer-card input {
-    width: 56px; background: var(--bg); border: 1px solid var(--line); color: var(--text);
-    padding: 4px 6px; border-radius: 5px; font-size: 13px; text-align: center;
+    width: 46px; background: var(--bg); border: 1px solid var(--line); color: var(--text);
+    padding: 4px 5px; border-radius: 5px; font-size: 12px; text-align: center;
   }
-  .timer-card .btn { padding: 4px 10px; font-size: 12px; }
+  .timer-card .btn { padding: 3px 8px; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -320,21 +323,16 @@
   <button class="help-btn" onclick="showIntro()" title="How this works" aria-label="How this works">?</button>
 </header>
 
-<nav class="tabs">
-  <button class="active" data-view="comps" onclick="showView('comps')">Team Comps</button>
-  <button data-view="ult" onclick="showView('ult')">Ult Watch</button>
-</nav>
-
-<!-- ============ TEAM COMPS ============ -->
+<!-- ============ MAIN (single screen) ============ -->
 <div class="view active" id="view-comps">
   <div class="intro-card" id="intro-card">
     <button class="intro-close" onclick="dismissIntro()" title="Dismiss" aria-label="Dismiss">&times;</button>
     <h2>Welcome to Rivals Tactics</h2>
     <ul>
-      <li><b>Team Comps</b> &mdash; Pick <b>your</b> heroes and the <b>enemy's</b> from the list below; use the <b>My Team / Enemy Team</b> toggle to choose which side you're filling. Your side shows role balance and warnings.</li>
+      <li><b>Build both teams</b> &mdash; Pick <b>your</b> heroes and the <b>enemy's</b> from the hero list; use the <b>My Team / Enemy Team</b> toggle to choose which side you're filling. Your side shows role balance and warnings.</li>
       <li><b>Counter Intel</b> &mdash; Hit <b>Lock in comp</b> for counter-pick suggestions based on the enemy lineup.</li>
-      <li><b>&#127908; Voice input</b> &mdash; On the enemy side, tap the mic and just say hero names (works in Edge/Chrome). Say <span class="dim">&ldquo;lock it in&rdquo;</span> for spoken counters.</li>
-      <li><b>Ult Watch</b> &mdash; Track enemy ultimate cooldowns with countdown timers.</li>
+      <li><b>&#127908; Voice input</b> &mdash; Tap the mic and just say enemy hero names (works in Edge/Chrome). Say <span class="dim">&ldquo;lock it in&rdquo;</span> for spoken counters.</li>
+      <li><b>Ult Watch</b> &mdash; The third panel tracks enemy ultimate charge with countdown rings.</li>
     </ul>
     <button class="btn primary" onclick="dismissIntro()">Got it</button>
   </div>
@@ -371,6 +369,15 @@
         <div class="intel-cards" id="intel-cards"></div>
       </div>
     </div>
+    <!-- Third: ult watch -->
+    <div class="panel">
+      <h2>Ult Watch</h2>
+      <input type="text" id="ult-search" placeholder="Search a hero to track their ult..."
+             oninput="renderUltSearch(this.value)">
+      <div id="ult-results"></div>
+      <div id="ult-timers"></div>
+      <div class="ult-empty" id="ult-empty">No ults tracked yet. Search a hero above, or say a hero's name to start a timer.</div>
+    </div>
   </div>
 
   <!-- Shared hero picker with team toggle -->
@@ -384,17 +391,6 @@
     </div>
     <div id="hero-picker"></div>
   </div>
-</div>
-
-<!-- ============ ULT WATCH ============ -->
-<div class="view" id="view-ult">
-  <div class="panel">
-    <h2>Track Enemy Ultimates</h2>
-    <input type="text" id="ult-search" placeholder="Search a hero to start tracking their ult..."
-           oninput="renderUltSearch(this.value)">
-    <div id="ult-results"></div>
-  </div>
-  <div id="ult-timers"></div>
 </div>
 
 <script>
@@ -479,24 +475,17 @@ function dismissIntro() {
   localStorage.setItem("rivals_intro_dismissed", "1");
 }
 function showIntro() {
-  showView("comps"); // the card lives on the Team Comps tab
   const card = document.getElementById("intro-card");
   card.style.display = "";
   card.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
-/* ============ VIEWS / TABS ============ */
+/* ============ PICKER TARGET ============ */
 function setPickTarget(which) {
   pickTarget = which;
   document.querySelectorAll("#target-toggle button").forEach(b =>
     b.classList.toggle("active", b.dataset.target === which));
   renderPicker();
-}
-function showView(id) {
-  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-  document.getElementById("view-" + id).classList.add("active");
-  document.querySelectorAll("nav.tabs button").forEach(b =>
-    b.classList.toggle("active", b.dataset.view === id));
 }
 /* ============ SQUAD RENDERING ============ */
 function renderSquad(which) {
@@ -717,20 +706,22 @@ function renderUltSearch(q) {
     el.appendChild(b);
   });
 }
+const ULT_R = 40; // ring radius (compact for the narrow pane)
 function addUltTimer(hero) {
   if (ultTimers[hero.name]) return;
   ultTimers[hero.name] = { remaining: 0, total: 90, interval: null };
   const card = document.createElement("div");
   card.className = "timer-card";
   card.id = "timer-" + cssId(hero.name);
-  const R = 52, C = 2 * Math.PI * R;
+  const C = 2 * Math.PI * ULT_R;
+  const roleColor = hero.upcoming ? "var(--gold)" : `var(--${hero.role.toLowerCase()})`;
   card.innerHTML = `
-    <div class="t-name" style="color:var(--${hero.role.toLowerCase()})">${hero.name}</div>
-    <svg width="130" height="130" viewBox="0 0 130 130">
-      <circle class="ring-bg" cx="65" cy="65" r="${R}" fill="none" stroke-width="8"/>
-      <circle class="ring-fg" cx="65" cy="65" r="${R}" fill="none" stroke-width="8"
-        stroke-dasharray="${C}" stroke-dashoffset="0" transform="rotate(-90 65 65)"/>
-      <text class="t-time" x="65" y="72" text-anchor="middle">READY</text>
+    <div class="t-name" style="color:${roleColor}">${hero.name}</div>
+    <svg width="96" height="96" viewBox="0 0 96 96">
+      <circle class="ring-bg" cx="48" cy="48" r="${ULT_R}" fill="none" stroke-width="7"/>
+      <circle class="ring-fg" cx="48" cy="48" r="${ULT_R}" fill="none" stroke-width="7"
+        stroke-dasharray="${C}" stroke-dashoffset="0" transform="rotate(-90 48 48)"/>
+      <text class="t-time" x="48" y="53" text-anchor="middle">READY</text>
     </svg>
     <div class="t-controls">
       <input type="number" value="90" min="5" max="600" title="Ult timer seconds (editable — exact charge shifts patch to patch)">
@@ -740,6 +731,11 @@ function addUltTimer(hero) {
   card.querySelector('[data-act="start"]').onclick = () => startUlt(hero.name);
   card.querySelector('[data-act="remove"]').onclick = () => removeUlt(hero.name);
   document.getElementById("ult-timers").appendChild(card);
+  updateUltEmpty();
+}
+function updateUltEmpty() {
+  document.getElementById("ult-empty").style.display =
+    Object.keys(ultTimers).length ? "none" : "";
 }
 function startUlt(name) {
   const t = ultTimers[name];
@@ -756,7 +752,7 @@ function tickUlt(name) {
   const card = document.getElementById("timer-" + cssId(name));
   const ring = card.querySelector(".ring-fg");
   const text = card.querySelector(".t-time");
-  const C = 2 * Math.PI * 52;
+  const C = 2 * Math.PI * ULT_R;
   if (t.remaining <= 0) {
     clearInterval(t.interval);
     ring.style.strokeDashoffset = 0;
@@ -772,6 +768,7 @@ function removeUlt(name) {
   clearInterval(ultTimers[name].interval);
   delete ultTimers[name];
   document.getElementById("timer-" + cssId(name)).remove();
+  updateUltEmpty();
 }
 function cssId(s) { return s.replace(/[^a-z0-9]/gi, "-").toLowerCase(); }
 
@@ -953,6 +950,7 @@ if (localStorage.getItem("rivals_intro_dismissed")) {
 }
 renderSquad("my");
 renderSquad("enemy");
+updateUltEmpty();
 </script>
 </body>
 </html>
