@@ -106,7 +106,7 @@
   nav.tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
   nav.tabs button:hover { color: var(--text); }
 
-  .view { display: none; padding: 20px 22px 60px; max-width: 1200px; margin: 0 auto; }
+  .view { display: none; padding: 20px 26px 40px; max-width: none; margin: 0 auto; }
   .view.active { display: block; }
 
   .panel {
@@ -208,6 +208,32 @@
   .comp-grid .panel { margin-bottom: 0; }
   @media (max-width: 1100px) { .comp-grid { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 720px)  { .comp-grid { grid-template-columns: 1fr; } }
+
+  /* Experiment (2026-07-03): hero picker as its own left column so it scrolls
+     inside itself instead of pushing the page down — goal is a no-scroll screen. */
+  .app-layout {
+    display: grid; grid-template-columns: 300px 1fr; gap: 16px;
+    align-items: start; margin-bottom: 16px;
+  }
+  .picker-col {
+    margin-bottom: 0; position: sticky; top: 16px;
+    max-height: calc(100vh - 32px); overflow-y: auto;
+  }
+  .right-panes {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+    align-items: stretch;
+  }
+  .right-panes .panel { margin-bottom: 0; }
+  @media (max-width: 1100px) {
+    .right-panes { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 1000px) {
+    .app-layout { grid-template-columns: 1fr; }
+    .picker-col { position: static; max-height: none; }
+  }
+  @media (max-width: 680px) {
+    .right-panes { grid-template-columns: 1fr; }
+  }
   .intel-panel-gap, #intel-panel { margin-top: 16px; }
   .intel-heading { margin-top: 0; }
   .picker-head {
@@ -331,9 +357,22 @@
     </ul>
     <button class="btn primary" onclick="dismissIntro()">Got it</button>
   </div>
-  <div class="comp-grid">
-    <!-- Left: your squad -->
-    <div class="panel">
+  <div class="app-layout">
+    <!-- Left column: shared hero picker with team toggle -->
+    <div class="panel picker-col">
+      <div class="picker-head">
+        <h2 class="picker-title">Hero Picker</h2>
+        <div class="target-toggle" id="target-toggle">
+          <button data-target="my" class="active" onclick="setPickTarget('my')">Add to My Team</button>
+          <button data-target="enemy" onclick="setPickTarget('enemy')">Add to Enemy Team</button>
+        </div>
+      </div>
+      <div id="hero-picker"></div>
+    </div>
+
+    <div class="right-panes">
+    <!-- Your squad -->
+    <div class="panel area-squad">
       <h2>Your Squad</h2>
       <div class="squad-bar">
         <div class="hex-row" id="squad-slots"></div>
@@ -346,8 +385,8 @@
         <div class="intel-cards" id="team-plan-cards"></div>
       </div>
     </div>
-    <!-- Right: enemy squad + counter intel -->
-    <div class="panel">
+    <!-- Enemy squad + counter intel -->
+    <div class="panel area-enemy">
       <h2>Enemy Squad</h2>
       <div class="squad-bar">
         <div class="hex-row" id="enemy-slots"></div>
@@ -357,9 +396,9 @@
       <div class="scan-row">
         <button class="btn" id="voice-btn" onclick="toggleVoice()">&#127908; Voice input</button>
         <label class="paste-hint" title="Reads confirmations and counter intel out loud so you never look away from the game">
-          <input type="checkbox" id="voice-speak" checked> speak back
+          <input type="checkbox" id="voice-speak"> speak back
         </label>
-        <span class="scan-status" id="voice-status">Say hero names ("Venom, Spidey") &middot; "remove Venom" &middot; "swapped Venom for Magneto" &middot; "Hela ultimate" &middot; "clear" &middot; "lock it in"</span>
+        <span class="scan-status" id="voice-status">Say hero names ("Venom, Spidey") &middot; "remove Venom" &middot; "swapped Venom for Magneto" &middot; "Hela ultimate" &middot; "clear" &middot; "lock it in" &middot; start with "we &hellip;" for YOUR squad or "they &hellip;" for the enemy (e.g. "we picked Groot")</span>
       </div>
       <div class="paste-hint" id="voice-heard" style="margin-top:6px"></div>
       <div id="intel-panel" style="display:none">
@@ -367,8 +406,8 @@
         <div class="intel-cards" id="intel-cards"></div>
       </div>
     </div>
-    <!-- Third: ult watch -->
-    <div class="panel">
+    <!-- Ult watch -->
+    <div class="panel area-ult">
       <h2>Ult Watch</h2>
       <input type="text" id="ult-search" placeholder="Search a hero to track their ult..."
              oninput="renderUltSearch(this.value)">
@@ -377,19 +416,8 @@
       <div id="ult-timers"></div>
       <div class="ult-empty" id="ult-empty">No ults tracked yet. Search a hero above, or say a hero's name to start a timer.</div>
     </div>
-  </div>
-
-  <!-- Shared hero picker with team toggle -->
-  <div class="panel">
-    <div class="picker-head">
-      <h2 class="picker-title">Hero Picker</h2>
-      <div class="target-toggle" id="target-toggle">
-        <button data-target="my" class="active" onclick="setPickTarget('my')">Add to My Team</button>
-        <button data-target="enemy" onclick="setPickTarget('enemy')">Add to Enemy Team</button>
-      </div>
-    </div>
-    <div id="hero-picker"></div>
-  </div>
+    </div><!-- /right-panes -->
+  </div><!-- /app-layout -->
 </div>
 
 <script>
@@ -1059,11 +1087,24 @@ function stopVoice() {
   voiceStatus("Voice off.", "");
 }
 function handleVoiceCommand(text) {
-  const t = text.toLowerCase();
+  let t = text.toLowerCase();
+  // Route to YOUR squad when the phrase says "my team"/"my squad"/"our team".
+  // Without that phrase, everything defaults to the ENEMY squad, so calling out
+  // heroes during a match behaves exactly as before.
+  // Route by pronoun: first-person ("we", "our", "my team") -> YOUR squad;
+  // third-person ("they", "their") or no pronoun at all -> ENEMY squad (the default).
+  let target = "enemy";
+  if (/\bwe\b/.test(t) || /\bour\b/.test(t) || /\bmy\s+(team|squad|side)\b/.test(t)) {
+    target = "my";
+  }
+  // Strip the routing words so they can't be mistaken for a command or a hero.
+  t = t.replace(/\bmy\s+(team|squad|side)\b/g, " ")
+       .replace(/\b(we|our|they|their|them)\b/g, " ");
+  const teamLabel = target === "my" ? "your squad" : "enemy squad";
   if (/\b(clear|reset|start over)\b/.test(t)) {
-    clearSquad("enemy");
-    voiceStatus("Cleared enemy squad.", "ok");
-    speak("Cleared");
+    clearSquad(target);
+    voiceStatus("Cleared " + teamLabel + ".", "ok");
+    speak("Cleared " + (target === "my" ? "your team" : "enemy"));
     return;
   }
   const heroes = parseHeroesFromSpeech(text);
@@ -1091,42 +1132,42 @@ function handleVoiceCommand(text) {
   // so phrasing order doesn't matter.
   const swapping = /\b(swap|swapped|swapping|switch|switched|switching)\b/.test(t);
   if (swapping && heroes.length) {
-    const toRemove = heroes.filter(h => squads.enemy.includes(h));
-    const toAdd = heroes.filter(h => !squads.enemy.includes(h));
-    toRemove.forEach(h => togglePick("enemy", h)); // remove first to free slots
+    const toRemove = heroes.filter(h => squads[target].includes(h));
+    const toAdd = heroes.filter(h => !squads[target].includes(h));
+    toRemove.forEach(h => togglePick(target, h)); // remove first to free slots
     const added = [];
-    toAdd.forEach(h => { if (squads.enemy.length < 6) { togglePick("enemy", h); added.push(h.name); } });
+    toAdd.forEach(h => { if (squads[target].length < 6) { togglePick(target, h); added.push(h.name); } });
     const outNames = toRemove.map(h => h.name);
     if (outNames.length && added.length) {
-      voiceStatus("Swapped: " + outNames.join(", ") + " → " + added.join(", ") +
-        " (" + squads.enemy.length + "/6)", "ok");
+      voiceStatus("Swapped in " + teamLabel + ": " + outNames.join(", ") + " → " + added.join(", ") +
+        " (" + squads[target].length + "/6)", "ok");
       speak("Swapped to " + added.join(", "));
     } else if (added.length) {
-      voiceStatus("Swapped in: " + added.join(", ") + " (" + squads.enemy.length + "/6)", "ok");
+      voiceStatus("Swapped into " + teamLabel + ": " + added.join(", ") + " (" + squads[target].length + "/6)", "ok");
       speak(added.join(", ") + " in");
     } else if (outNames.length) {
-      voiceStatus("Swapped out: " + outNames.join(", ") + " (" + squads.enemy.length + "/6)", "ok");
+      voiceStatus("Swapped out of " + teamLabel + ": " + outNames.join(", ") + " (" + squads[target].length + "/6)", "ok");
       speak(outNames.join(", ") + " out");
     } else {
-      voiceStatus('Heard a swap but nothing changed — enemy squad may be full (6/6).', "");
+      voiceStatus("Heard a swap but nothing changed — " + teamLabel + " may be full (6/6).", "");
     }
-    if (squads.enemy.length === 6) speakIntel(lockComp());
+    if (target === "enemy" && squads.enemy.length === 6) speakIntel(lockComp());
     return;
   }
   const removing = /\b(remove|drop|not|scratch|take out)\b/.test(t);
   if (heroes.length) {
     const done = [];
     heroes.forEach(h => {
-      const inSquad = squads.enemy.includes(h);
-      if (removing && inSquad) { togglePick("enemy", h); done.push(h.name); }
-      else if (!removing && !inSquad && squads.enemy.length < 6) { togglePick("enemy", h); done.push(h.name); }
+      const inSquad = squads[target].includes(h);
+      if (removing && inSquad) { togglePick(target, h); done.push(h.name); }
+      else if (!removing && !inSquad && squads[target].length < 6) { togglePick(target, h); done.push(h.name); }
     });
     if (done.length) {
-      voiceStatus((removing ? "Removed: " : "Added: ") + done.join(", ") +
-        " (" + squads.enemy.length + "/6)", "ok");
+      voiceStatus((removing ? "Removed from " : "Added to ") + teamLabel + ": " + done.join(", ") +
+        " (" + squads[target].length + "/6)", "ok");
       speak(done.join(", ") + (removing ? " removed" : ""));
     }
-    if (!removing && squads.enemy.length === 6) { speakIntel(lockComp()); return; }
+    if (!removing && target === "enemy" && squads.enemy.length === 6) { speakIntel(lockComp()); return; }
   }
   if (/\block\b/.test(t)) speakIntel(lockComp());
   else if (!heroes.length) voiceStatus('Heard: "' + text + '" — no hero recognized.', "");
