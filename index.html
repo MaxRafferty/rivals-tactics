@@ -412,7 +412,7 @@
     <h2>Welcome to Rivals Tactics</h2>
     <ul>
       <li><b>Build both teams</b> &mdash; Pick <b>your</b> heroes and the <b>enemy's</b> from the hero list; use the <b>My Team / Enemy Team</b> toggle to choose which side you're filling. Your side shows role balance and warnings.</li>
-      <li><b>Counter Intel</b> &mdash; Hit <b>Lock in comp</b> for counter-pick suggestions based on the enemy lineup.</li>
+      <li><b>Counter Intel</b> &mdash; Counter-pick suggestions appear automatically once the enemy squad is full (6 heroes).</li>
       <li><b>&#127908; Voice input</b> &mdash; Tap the mic and just say enemy hero names (works in Edge/Chrome). Say <span class="dim">&ldquo;lock it in&rdquo;</span> for spoken counters.</li>
       <li><b>Ult Watch</b> &mdash; The third panel tracks enemy ultimate charge with countdown rings. Say <span class="dim">&ldquo;Hela ulted&rdquo;</span> to start a ring hands-free.</li>
     </ul>
@@ -468,7 +468,6 @@
       <h2>Enemy Squad</h2>
       <div class="squad-bar">
         <div class="hex-row" id="enemy-slots"></div>
-        <button class="btn primary" onclick="lockComp()">Lock in comp</button>
         <button class="btn danger" onclick="clearSquad('enemy')">Clear</button>
       </div>
       <div id="intel-panel" style="display:none">
@@ -665,7 +664,12 @@ function renderSquad(which) {
   }
   renderPicker();
   if (which === "my") renderBalance();
-  if (which === "enemy") document.getElementById("intel-panel").style.display = "none";
+  if (which === "enemy") {
+    // Counter Intel appears automatically once the enemy squad is full (6),
+    // however it was filled (voice or click); hidden until then.
+    if (squads.enemy.length === 6) lockComp();
+    else document.getElementById("intel-panel").style.display = "none";
+  }
 }
 function togglePick(which, hero) {
   const squad = squads[which];
@@ -944,7 +948,6 @@ function lockComp() {
     }).join("");
   }
   document.getElementById("intel-panel").style.display = "block";
-  document.getElementById("intel-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
   return results;
 }
 
@@ -1063,23 +1066,23 @@ const ALIASES = {
   "Black Panther": ["panther"],
   "Black Widow": ["widow"],
   "Blade": [],
-  "Cyclops": ["cyclop"],
+  "Cyclops": ["cyclop", "sick lips"],
   "Daredevil": ["dare devil"],
   "Elsa Bloodstone": ["elsa", "bloodstone"],
-  "Hawkeye": ["hawk eye"],
-  "Hela": ["hella"],
+  "Hawkeye": ["hawk eye", "okay"],
+  "Hela": ["hella", "hello"],
   "Human Torch": ["torch"],
   "Iron Fist": [],
-  "Iron Man": [],
+  "Iron Man": ["mister stark", "mr stark", "tony stark", "tony"],
   "Magik": ["magic"],
   "Mister Fantastic": ["mr fantastic", "fantastic", "reed richards"],
   "Moon Knight": ["moon night", "moonlight"],
-  "Namor": ["nay more", "namore"],
+  "Namor": ["nay more", "namore", "neymar", "no more"],
   "Phoenix": ["jean grey"],
-  "Psylocke": ["psy lock", "sy lock", "cy lock"],
+  "Psylocke": ["psy lock", "sy lock", "cy lock", "satellite", "salac", "salad", "sailac", "say like", "silac"],
   "The Punisher": ["punisher", "frank castle"],
   "Scarlet Witch": ["scarlet", "wanda"],
-  "Spider-Man": ["spider man", "spiderman", "spidey"],
+  "Spider-Man": ["spider man", "spiderman", "spidey", "idiot"],
   "Squirrel Girl": ["squirrel"],
   "Star-Lord": ["star lord", "starlord"],
   "Storm": [],
@@ -1088,7 +1091,7 @@ const ALIASES = {
   "Adam Warlock": ["warlock", "adam"],
   "Cloak & Dagger": ["cloak and dagger", "cloak", "dagger"],
   "Gambit": [],
-  "Invisible Woman": ["invisible", "sue storm"],
+  "Invisible Woman": ["invisible", "sue storm", "invis"],
   "Jeff the Land Shark": ["jeff", "land shark", "the shark"],
   "Loki": ["low key", "lowkey"],
   "Luna Snow": ["luna"],
