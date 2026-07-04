@@ -1,0 +1,99 @@
+Good, that gives me a feel for the current state (Season 8.5 now, Season 9 launching July 10 with Jubilee and The Hood). Here's a range of ideas, from quick weekend builds to bigger projects:
+Marvel Rivals specific
+
+Team comp builder — pick your 6 heroes, get synergy suggestions (who combos with whom, e.g. team-up abilities), counters for the enemy comp, and role balance warnings (too many Duelists, no Strategist, etc.)
+Tier list / meta tracker — a living tier list by role that you update each patch, with notes on why a hero moved. Could pull win-rate data if we find an API or scrape publicly available stats.
+Ultimate cooldown / timing tracker — an in-match style overlay or companion tool that helps you track which enemy ultimates are up, since Rivals fights hinge a lot on ult economy.
+Sensei / practice tool — quiz-style app that shows a hero's kit and asks you to identify counters, combos, or optimal positioning.
+Patch notes digest — since NetEase ships frequent, chunky patch notes, a tool that summarizes each patch into "what actually changed for your mains" (paste in your favorite heroes, get a filtered digest).
+Season countdown / roadmap tracker — clean visual timeline of confirmed and leaked heroes, battle pass, and event dates (Season 9 launches July 10 with Jubilee, for example).
+
+Broader video game ideas
+
+Backlog / "what should I play tonight" picker — you feed it your Steam library or a manual list, it picks based on mood, time available, and genre.
+Local co-op / party game randomizer — great for game nights, spins up a random pick from a curated list filtered by player count.
+Achievement/completionist tracker across multiple games in one dashboard.
+Pixel-art or sprite-based mini-game — if you want something purely fun to build, a small browser game (endless runner, puzzle, etc.) themed around Marvel Rivals characters (fan-art style, not using actual copyrighted art/assets).
+
+If one of these jumps out, I can start building it as an interactive artifact right now — want to pick one, or should I sketch a quick prototype of my favorite (probably the team comp builder, since it's genuinely useful and fun to build with synergy logic)?I like number 1 and number 3 togetherArchitected Marvel Rivals team builder with tactical HUD interfaceArchitected Marvel Rivals team builder with tactical HUD interfaceHere's a first pass combining both: Squad Builder (pick 6 heroes, get live 2-2-2 feedback across the full Season 8.5 roster) and Ult Watch (search any hero, start a countdown ring for when their ult is up, editable duration since exact cooldowns shift patch to patch).
+A few things worth tuning together next:
+
+Add a save/share feature for comps (e.g. generate a code you can paste to a friend)
+Auto-suggest counters when you lock in an enemy comp
+Sound/flash alert when an ult timer hits zero
+Pull in the actual Season 9 heroes (Jubilee, The Hood) when they land July 10
+
+What would you like to dig into first?Rivals tacticsCode · HTML Auto-suggest counters when you lock in an enemy compArchitected tag-based counter-suggestion system for hero compositionsArchitected tag-based counter-suggestion system for hero compositionsGood call — let's make it feel like real intel. I'll tag every hero by their kit archetype (dive, shield, healer, sniper, flying, CC, etc.), then when you lock in an enemy comp, the tool pattern-matches those tags against counter-pick logic (dive comps get punished by CC/peel, shield comps get punished by burst, healer-stacked comps get punished by dive assassins, and so on).Edited 3 filesEdited 3 filesNow the CSS for the counter suggestion cards:Add CSS for counter suggestion cardsAdd CSS for counter suggestion cardsNow the JS: hero tags, enemy squad state, rule engine, and rendering.Add hero tag data and counter rule engine before the tabs scriptAdd hero tag data and counter rule engine before the tabs scriptNow wire the init calls for the new view:Initialize the Counter Intel view on loadInitialize the Counter Intel view on loadNow let's copy to outputs and do a quick sanity check on the file:Ran a command, read a fileRan a command, read a fileNew Counter Intel tab: build the enemy comp on the hex grid, hit Lock in comp, and it reads the archetype tags across their picks (dive, shield, healer, sniper, flying, CC, AoE) to surface reasoning like "they're healer-stacked → dive burst punishes that" or "no frontline → skip the tank fight and go straight at the backline." Any suggested hero already in your own squad gets a ✓ so you can see overlap at a glance.
+Worth flagging: these are archetype-based heuristics, not pulled from official win-rate data, since I can't reliably verify exact per-hero counter matchups for the current patch. Good next steps if you want to keep going:
+
+Let you flag your own locked squad before seeing counters, so it can tell you which of your picks are already good answers vs. what's missing
+Weight suggestions by role balance (don't recommend 4 Duelists)
+A "why" tooltip on each hero chip explaining the specific kit trait
+Rivals tacticsCode · HTML i want the counter suggestions to appear at the top of the page not the bottomRepositioned counter suggestions component for improved page visibilityRepositioned counter suggestions component for improved page visibilityDone — suggestions now render right under the enemy squad bar, above the hero picker grid, so you see them the moment you hit "Lock in comp" without scrolling.Rivals tacticsCode · HTML is there a way to get this app to actually look at the screen of my current game and make the picks based on what it see's?Weighed technical constraints and devised screenshot upload workaroundWeighed technical constraints and devised screenshot upload workaroundReal quick reality check: because this tool runs in a sandboxed browser preview, it can't get live, continuous access to your desktop the way a screen-recording app would — there's no persistent screen-share permission available in this context. But there is something that actually works: you can upload or paste a screenshot of the hero-select screen, and I can wire the tool to send that image to Claude's vision model directly (the artifact can call the Anthropic API on its own), which reads off the hero portraits and auto-fills your picks.
+Let me build that — screenshot in, picks filled in automatically.Add screenshot upload UI to the enemy comp bar in Counter IntelAdd screenshot upload UI to the enemy comp bar in Counter IntelNow the same for Squad Builder (your own picks), plus CSS for the status text:Edited 2 filesEdited 2 filesNow the JS that does the actual vision call and auto-fills the picks:Edited a file, ran a command, read a fileEdited a file, ran a command, read a fileBoth tabs now have a Scan screenshot button. Take a screenshot of the hero-select or scoreboard screen, upload it there, and it sends the image to Claude's vision model, which reads off the visible heroes and auto-fills the squad slots (for the enemy tab, it also re-runs the counter suggestions right away).
+Worth knowing going in:
+
+It's a one-shot read per screenshot, not a live feed — you'll upload again each time the picks change
+Screenshot quality matters a lot; a clean, unobstructed shot of the character portraits will read far more reliably than a blurry action shot mid-match
+It can occasionally misread a hero or miss one in a crowded screen, so it's worth a quick glance at the "Found: …" line before trusting the auto-fill
+
+Want to try it on a real screenshot to see how it reads, or should we tighten up the detection prompt first (e.g. distinguishing "your team" vs "enemy team" if both show on one screen)?Rivals tacticsCode · HTML yeah what is the fastest way for me to take a screenshot on windows 11Fastest option: Windows key + Shift + S. It opens the snipping tool overlay, lets you drag a box around just the part of the screen you want (like the hero-select area), and copies it straight to your clipboard.
+From there you've got two ways to get it into the tool:
+
+Paste it somewhere first (Paint, Word, etc.) and save it, then use "Scan screenshot" to upload the file
+Or if you want, I can add a paste-from-clipboard option to the tool itself — press Ctrl+V right on the page instead of saving a file first, which would be faster for repeated scans mid-game
+
+A couple other options in case they fit your flow better:
+
+Windows key + Print Screen — captures the whole screen and auto-saves a PNG straight to Pictures > Screenshots, no extra steps, but no cropping
+Alt + Print Screen — copies just the active window to clipboard (same paste-required workflow as Snip & Sketch)
+
+Want me to add that clipboard-paste shortcut to the app so you can skip the save-a-file step entirely?yes pleaseArchitected clipboard image detection with UI enhancementArchitected clipboard image detection with UI enhancementNow update the hint text so it's clear paste works too:Edited 2 files, ran a command, read a fileEdited 2 files, ran a command, read a fileDone. Now your flow is:
+
+Win + Shift + S → drag a box around the hero portraits
+Click anywhere on the Squad Builder or Counter Intel tab, hit Ctrl+V
+It reads the clipboard image straight away — no saving a file first
+
+Both tabs still have the file-upload button too, in case you'd rather scan a saved screenshot later.Rivals tacticsCode · HTML can I change where my screenshots save?Examined screenshot methods and relocation strategiesExamined screenshot methods and relocation strategiesA couple of different settings depending on which method you're using:
+For Win + PrtScn (auto-saves full screenshots)
+These land in Pictures > Screenshots by default. To change that:
+
+Open File Explorer → go to This PC > Pictures > Screenshots
+Right-click the Screenshots folder → Properties
+Go to the Location tab → click Move...
+Pick your new folder → confirm, and it'll offer to move existing screenshots there too
+
+For the Snipping Tool (Win + Shift + S)
+By default this just copies to your clipboard and doesn't save a file unless you click "Save" in the little popup that appears after snipping. If you want it to auto-save every snip:
+
+Open the Snipping Tool app (search it in the Start menu)
+Click the Settings (gear icon)
+Turn on "Automatically save screenshots to a file" and set the folder you want under Save location
+
+Since your workflow is paste-with-Ctrl+V into the tool, you don't actually need either of these — the clipboard copy from Win+Shift+S is enough on its own. But it's good to have if you want a saved history of the comps you've scanned.I got this message when trying to paste a screenshotIdentified missing error details and screenshot attachmentIdentified missing error details and screenshot attachmentWhat did the message say? I don't see an attached screenshot or error text in your last message — could you paste the exact wording (or a screenshot of the error itself)?
+In the meantime, a couple of likely culprits given how the tool is built:
+
+"Scan failed: API request failed (401)" or similar — an auth/permissions issue with the API call from the artifact
+"Scan failed: Failed to fetch" — the browser blocked the outbound request, sometimes due to network restrictions or an ad-blocker/extension
+Nothing happens at all when you press Ctrl+V — the browser may not have given clipboard-read permission, or the paste event didn't fire because focus wasn't on the page (e.g. it was still on the browser's address bar)
+
+If you can share the exact error text, I can fix the actual cause rather than guess.Scan failed: API request failed (400)Diagnosed API error and devised image compression solutionDiagnosed API error and devised image compression solutionA 400 usually means the request itself was malformed — most often because the screenshot was too large (full-res Windows screenshots can be several MB, and the API has a size limit). Let me fix that by resizing/compressing the image client-side before it gets sent, and also surface the actual API error message so future failures are easier to diagnose.Edited a file, ran a command, read a fileEdited a file, ran a command, read a fileFixed two things:
+
+Screenshots now get resized/compressed to a max of 1400px on the long edge before sending, which should knock out the most likely cause — a full-res 1080p/4K screenshot pushing past the API's size limit.
+Error messages are more specific now — if it fails again, the "Scan failed" text will include the actual reason from the API instead of just a bare status code, so we can pin down exactly what's wrong.
+
+Try pasting the screenshot again — if it still throws a 400, send me the new (more detailed) error text and I'll dig into that specific cause.Rivals tacticsCode · HTML now it said this
+Scan failed: Could not load that imageDiagnosed sandbox restrictions and pivoted to FileReader solutionDiagnosed sandbox restrictions and pivoted to FileReader solutionThat's likely a CSP restriction in this sandboxed environment — blob: URLs for images can get blocked even though they work fine in a normal browser tab. Let me switch to reading the file as a plain data URL instead, which is more reliably allowed here.Edited a file, ran a command, read a fileEdited a file, ran a command, read a fileSwapped blob: URLs for plain data: URLs when loading the image into the canvas — that avoids a content-security-policy restriction that's common in sandboxed preview environments. Give the paste another try; if it still fails, let me know the exact new message.Rivals tacticsCode · HTML I need to be able to quickly see the enemy team comp in the app so can you make it so the heroes picked display the full name of the enemy team so I can verify it is correct?Devised verification panel displaying full enemy names for quick team composition confirmationDevised verification panel displaying full enemy names for quick team composition confirmationNow the CSS for the readout row:Add CSS for the name readout chipsAdd CSS for the name readout chipsNow update the JS to render this readout whenever the enemy squad changes:Edited a file, ran a command, read a fileEdited a file, ran a command, read a fileAdded a row of full-name chips right under the enemy squad slots, color-coded by role, so as soon as a scan finishes you can glance at the actual names (not just initials in the hex slots) and confirm the read was accurate before hitting "Lock in comp."Rivals tacticsCode · HTML Its not doing great getting the heroes right from the screenshot.  It needs to be looking at only the right column of names for the enemy team when I paste itArchitected automatic image cropping to isolate enemy team columnArchitected automatic image cropping to isolate enemy team columnGood catch — if the enemy names are only in the right column, sending the whole image gives the model a lot of irrelevant stuff to sort through (your own team, UI chrome, etc.). Let me auto-crop to just that column before it gets sent, and add a toggle in case your specific screen layout differs.Edited 2 filesEdited 2 filesNow update the detection function to support cropping, wire up the toggle, and pass the region through to both the file-upload and paste handlers:Edited a file, ran a command, viewed a fileEdited a file, ran a command, viewed a fileNow I have the exact text — let's replace it correctly:Add crop-region support to resize and detection functionsAdd crop-region support to resize and detection functionsNow let's view the paste/change handlers to wire in the region parameter and the toggle buttons:Ran 2 commands, viewed a file, edited a fileRan 2 commands, viewed a file, edited a fileTwo changes on the Counter Intel tab:
+
+Auto-crop before sending — it now slices the image down to just the right ~52% before it ever reaches the model, and tells the model explicitly "everything in this crop is the enemy team," cutting out the noise from your own column and any UI chrome.
+A "Scan region" toggle right above the scan status, set to Right column by default. If your particular screen layout puts the enemy names on the left instead (some scoreboards flip it), just click Left column, or Full image if you'd rather it look at everything.
+
+Try a paste again with the default right-column crop — that alone should meaningfully cut down on misreads since it's no longer trying to sort your team from theirs in one pass.Rivals tacticsCode · HTML its said i am at 90% of my usage today. When does that reset?Searched the webSearched the webBased on the official Claude Help Center:
+Your usage limit runs on a rolling 5-hour window, not a fixed clock time. It starts counting from your first message in that window, and once you hit the limit, it resets 5 hours after that first message — your plan's included usage limit resets every five hours once you reach it. Claude
+So if you check your exact reset time, the best place is inside the app: Settings → Usage shows a "Resets at [time]" readout specific to your account, which will be more accurate than a generic estimate.
+A couple of other things worth knowing:
+
+If you're on a paid plan (Pro/Max), you can enable usage credits to keep going past the limit at standard API rates instead of waiting out the reset Claude
+There's also a separate, longer weekly cap sitting on top of the 5-hour one, in case you're consistently running close to the ceiling across the week
+
+If you want, I can pick back up on the Rivals Tactics tool once you're back — nothing was lost, the file's sitting in your outputs.
