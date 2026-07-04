@@ -165,21 +165,53 @@
   /* Voice Link button: big yellow when idle, whole-button pulsing red when live */
   /* Base (narrower screens): left-aligned flex — button at the Ult Watch pane's
      left edge, guide 16px to its right (same gap as between panes). */
-  .voice-bar { display: flex; justify-content: flex-start; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+  .voice-bar { display: flex; justify-content: flex-start; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
   .voice-launch { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .voice-controls { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; white-space: nowrap; }
   .voice-guide { list-style: none; margin: 0; padding: 0; font-size: 12.5px; line-height: 1.55; color: var(--text); text-align: left; }
   .voice-guide li { white-space: nowrap; }
   /* Wide screens: mirror the pane grid so the button spans the full Ult Watch
-     column and the guide begins at the Your Squad column's left edge. */
+     column and the guide begins at the Your Squad column's left edge. The guide
+     is lifted so its last line (the Playbook link) sits at the button's bottom;
+     the extra lines rise into the empty header space above. */
   @media (min-width: 1440px) {
     .voice-bar { display: grid; grid-template-columns: 0.8fr 1fr 1fr; align-items: start; }
-    .voice-launch { grid-column: 1; }
+    .voice-launch { grid-column: 1; min-width: 0; }
     .voice-launch #voice-btn { width: 100%; min-width: 0; }
-    .voice-guide { grid-column: 2 / -1; }
+    .voice-guide { grid-column: 2 / -1; align-self: start; transform: translateY(-57px); }
   }
   .voice-guide b { color: #fff; font-weight: 700; }
   .voice-guide .my { color: var(--accent); font-weight: 600; }
   .voice-guide .en { color: var(--red); font-weight: 600; }
+  .voice-more { color: var(--gold); font-weight: 700; cursor: pointer; text-decoration: none; }
+  .voice-more:hover { text-decoration: underline; }
+
+  /* Full voice command reference modal */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100; display: flex;
+    align-items: flex-start; justify-content: center; padding: 40px 16px;
+    background: rgba(5,8,14,0.72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    overflow-y: auto;
+  }
+  .modal-panel {
+    position: relative; width: 100%; max-width: 780px;
+    background: rgba(18,23,34,0.98); border: 1px solid var(--line); border-radius: 12px;
+    padding: 24px 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal-panel h2 { font-size: 20px; letter-spacing: 0.5px; text-transform: none; color: var(--text); margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--dim); line-height: 1.5; margin-bottom: 20px; }
+  .vp-section { margin-bottom: 18px; }
+  .vp-section h3 { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+  .vp-row {
+    display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.15fr); gap: 12px;
+    padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; line-height: 1.4;
+  }
+  .vp-say { color: #e9edf4; font-weight: 600; }
+  .vp-say .q { color: var(--gold); }
+  .vp-say.tip { color: var(--dim); font-weight: 500; font-style: italic; }
+  .vp-does { color: var(--dim); }
+  .vp-does b { color: var(--text); }
+  @media (max-width: 620px) { .vp-row { grid-template-columns: 1fr; gap: 2px; } }
   #voice-btn {
     min-width: 300px; padding: 15px 44px; border-radius: 9px;
     background: #ffd23f; color: #0b0e14; border: 2px solid #d9a91a;
@@ -411,10 +443,10 @@
     <button class="intro-close" onclick="dismissIntro()" title="Dismiss" aria-label="Dismiss">&times;</button>
     <h2>Welcome to Rivals Tactics</h2>
     <ul>
-      <li><b>Build both teams</b> &mdash; Pick <b>your</b> heroes and the <b>enemy's</b> from the hero list; use the <b>My Team / Enemy Team</b> toggle to choose which side you're filling. Your side shows role balance and warnings.</li>
-      <li><b>Counter Intel</b> &mdash; Counter-pick suggestions appear automatically once the enemy squad is full (6 heroes).</li>
-      <li><b>&#127908; Voice input</b> &mdash; Tap the mic and just say enemy hero names (works in Edge/Chrome). Say <span class="dim">&ldquo;lock it in&rdquo;</span> for spoken counters.</li>
-      <li><b>Ult Watch</b> &mdash; The third panel tracks enemy ultimate charge with countdown rings. Say <span class="dim">&ldquo;Hela ulted&rdquo;</span> to start a ring hands-free.</li>
+      <li><b>&#127908; Voice input</b> &mdash; This app runs by voice. Click <b>Power Up Voice Link</b> and just talk (works in Edge/Chrome): call out enemy heroes as you see them, say <span class="dim">&ldquo;we have &lt;hero&gt;&rdquo;</span> for your own team, and <span class="dim">&ldquo;&lt;hero&gt; ultimate&rdquo;</span> to track a big ult. Hit <b>Full Voice Command Playbook</b> for everything you can say.</li>
+      <li><b>Counter Intel</b> &mdash; As you build the <b>enemy</b> team, the moment it's full (6 heroes) counter-pick suggestions appear automatically under Enemy Squad.</li>
+      <li><b>Ult Watch</b> &mdash; Tracks enemy ultimate charge with countdown rings so you know when a big ult is about to drop.</li>
+      <li><b>No mic? Backup plan</b> &mdash; If you don't have a mic or hit any trouble with the voice commands, the <b>Roster</b> on the right is your backup: click a hero (using the <b>My / Enemy</b> toggle) to assign them.</li>
     </ul>
     <button class="btn primary" onclick="dismissIntro()">Got it</button>
   </div>
@@ -424,10 +456,12 @@
   <div class="voice-bar">
     <div class="voice-launch">
       <button class="btn" id="voice-btn" onclick="toggleVoice()">&#9889; Power Up Voice Link</button>
-      <label class="paste-hint" title="Reads confirmations and counter intel out loud so you never look away from the game">
-        <input type="checkbox" id="voice-speak"> speak back
-      </label>
-      <div class="scan-status" id="voice-status">Voice off &mdash; click <b>Power Up Voice Link</b> to start.</div>
+      <div class="voice-controls">
+        <label class="paste-hint" title="Reads confirmations and counter intel out loud so you never look away from the game">
+          <input type="checkbox" id="voice-speak"> speak back
+        </label>
+        <span class="scan-status" id="voice-status">Voice off &mdash; click <b>Power Up Voice Link</b> to start.</span>
+      </div>
     </div>
     <ul class="voice-guide">
       <li><b>&ldquo;We have Groot&rdquo;</b> &mdash; adds to <span class="my">your squad</span></li>
@@ -435,9 +469,9 @@
       <li><b>&ldquo;They swapped Venom for Magneto&rdquo;</b> &mdash; updates the enemy squad</li>
       <li><b>&ldquo;Hela ultimate&rdquo;</b> &mdash; starts that hero&rsquo;s ult timer</li>
       <li><b>&ldquo;Clear&rdquo;</b> or <b>&ldquo;lock it in&rdquo;</b> &mdash; reset or finalize a squad</li>
+      <li><a class="voice-more" onclick="openVoiceHelp()">&#128220; Full Voice Command Playbook &rarr;</a></li>
     </ul>
   </div>
-  <div class="paste-hint" id="voice-heard" style="margin: 4px 0 16px"></div>
     <div class="right-panes">
     <!-- Ult watch (far left) -->
     <div class="panel area-ult">
@@ -490,6 +524,62 @@
       <div id="hero-picker"></div>
     </div>
   </div><!-- /page-grid -->
+</div>
+
+<!-- Full voice command reference (opened from the "Full Voice Command Playbook" link) -->
+<div id="voice-help" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeVoiceHelp()">
+  <div class="modal-panel">
+    <button class="intro-close" onclick="closeVoiceHelp()" title="Close" aria-label="Close">&times;</button>
+    <h2>&#127908; Voice Command Playbook</h2>
+    <p class="modal-sub">Click <b>Power Up Voice Link</b>, then just talk &mdash; no need to pause between commands. Works in <b>Edge</b> or <b>Chrome</b> (not the in-app preview). Hero nicknames work too (&ldquo;Cap&rdquo;, &ldquo;Spidey&rdquo;, &ldquo;Tony&rdquo;, &ldquo;Luna&rdquo;&hellip;).</p>
+
+    <div class="vp-section">
+      <h3>Build your squads</h3>
+      <div class="vp-row"><span class="vp-say">Just say a hero&rsquo;s name &mdash; <span class="q">&ldquo;Venom&rdquo;</span></span><span class="vp-does">Adds to the <b>enemy</b> squad (the default while you call out the match)</span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;We have Groot&rdquo;</span> / &ldquo;our Groot&rdquo; / &ldquo;my team Groot&rdquo;</span><span class="vp-does">Adds to <b>your</b> squad</span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;They have Hela&rdquo;</span> / &ldquo;their Hela&rdquo;</span><span class="vp-does">Adds to the <b>enemy</b> squad</span></div>
+    </div>
+
+    <div class="vp-section">
+      <h3>Deadpool (flex pick)</h3>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Deadpool tank&rdquo;</span></span><span class="vp-does">Adds Deadpool as a <b>Vanguard</b></span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Deadpool duelist&rdquo;</span> / &ldquo;Deadpool DPS&rdquo;</span><span class="vp-does">Adds Deadpool as a <b>Duelist</b></span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Healpool&rdquo;</span> / &ldquo;Deadpool healer&rdquo; / &ldquo;Deadpool strat&rdquo;</span><span class="vp-does">Adds Deadpool as a <b>Strategist</b></span></div>
+    </div>
+
+    <div class="vp-section">
+      <h3>Remove &amp; swap</h3>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Remove Venom&rdquo;</span></span><span class="vp-does">Removes from the <b>enemy</b> squad</span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Remove Groot from my team&rdquo;</span></span><span class="vp-does">Removes from <b>your</b> squad</span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Remove Hela from their&rdquo;</span></span><span class="vp-does">Removes from the <b>enemy</b> squad</span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;They swapped Venom for Magneto&rdquo;</span></span><span class="vp-does">Swaps the enemy hero out for the new one</span></div>
+    </div>
+
+    <div class="vp-section">
+      <h3>Clear a squad</h3>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Clear&rdquo;</span></span><span class="vp-does">Clears the <b>enemy</b> squad (default)</span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Clear my team&rdquo;</span> / &ldquo;clear my squad&rdquo;</span><span class="vp-does">Clears <b>your</b> squad</span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Clear enemy team&rdquo;</span></span><span class="vp-does">Clears the <b>enemy</b> squad</span></div>
+    </div>
+
+    <div class="vp-section">
+      <h3>Ult timers</h3>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Hela ultimate&rdquo;</span></span><span class="vp-does">Starts that hero&rsquo;s ult countdown ring in Ult Watch</span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Punisher ultimate&rdquo;</span> / &ldquo;puni ultimate&rdquo; / &ldquo;pun ultimate&rdquo;</span><span class="vp-does">Starts Punisher&rsquo;s ult timer</span></div>
+      <div class="vp-row"><span class="vp-say tip">Say the full word <b>&ldquo;ultimate&rdquo;</b></span><span class="vp-does">The slang &ldquo;ult&rdquo; often mis-hears &mdash; &ldquo;ultimate&rdquo; is reliable</span></div>
+    </div>
+
+    <div class="vp-section">
+      <h3>Finalize</h3>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Lock it in&rdquo;</span></span><span class="vp-does">Reads the counter-pick intel out loud (it also appears on screen the moment the enemy squad hits 6)</span></div>
+    </div>
+
+    <div class="vp-section">
+      <h3>Tips</h3>
+      <div class="vp-row"><span class="vp-say">&ldquo;speak back&rdquo; checkbox</span><span class="vp-does">Turn on for spoken confirmations so you never look away from the game</span></div>
+      <div class="vp-row"><span class="vp-say">Mishears happen</span><span class="vp-does">Glance at the roster for the exact name the app expects, or check the &ldquo;heard&rdquo; readout under the button</span></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -629,6 +719,9 @@ function dismissIntro() {
   document.getElementById("intro-card").style.display = "none";
   localStorage.setItem("rivals_intro_dismissed", "1");
 }
+function openVoiceHelp() { document.getElementById("voice-help").style.display = "flex"; }
+function closeVoiceHelp() { document.getElementById("voice-help").style.display = "none"; }
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeVoiceHelp(); });
 function showIntro() {
   const card = document.getElementById("intro-card");
   card.style.display = "";
@@ -1080,7 +1173,7 @@ const ALIASES = {
   "Namor": ["nay more", "namore", "neymar", "no more"],
   "Phoenix": ["jean grey"],
   "Psylocke": ["psy lock", "sy lock", "cy lock", "satellite", "salac", "salad", "sailac", "say like", "silac"],
-  "The Punisher": ["punisher", "frank castle"],
+  "The Punisher": ["punisher", "frank castle", "puni", "pun"],
   "Scarlet Witch": ["scarlet", "wanda"],
   "Spider-Man": ["spider man", "spiderman", "spidey", "idiot"],
   "Squirrel Girl": ["squirrel"],
@@ -1102,10 +1195,22 @@ const ALIASES = {
   "Deadpool": ["dead pool", "wade"],
 };
 // Longest aliases first so "black panther" wins before "panther", etc.
+const norm = s => s.toLowerCase().replace(/[-&.,]/g, " ").replace(/\s+/g, " ").trim();
 const VOICE_LOOKUP = [];
 HEROES.forEach(h => {
-  const norm = s => s.toLowerCase().replace(/[-&.,]/g, " ").replace(/\s+/g, " ").trim();
   [h.name, ...(ALIASES[h.name] || [])].forEach(a => VOICE_LOOKUP.push({ alias: norm(a), hero: h }));
+});
+// Deadpool flexes across three same-named class instances — route role-specific
+// phrases to the right one. These are longer than bare "deadpool", so
+// parseHeroesFromSpeech matches and consumes them before the generic name.
+const deadpoolOf = role => HEROES.find(h => h.name === "Deadpool" && h.role === role);
+[
+  { role: "Vanguard",   phrases: ["deadpool tank", "tank deadpool", "deadpool vanguard"] },
+  { role: "Duelist",    phrases: ["deadpool duelist", "deadpool dps", "dps deadpool", "duelist deadpool"] },
+  { role: "Strategist", phrases: ["healpool", "deadpool healer", "deadpool strat", "deadpool strategist", "deadpool support"] },
+].forEach(({ role, phrases }) => {
+  const hero = deadpoolOf(role);
+  if (hero) phrases.forEach(p => VOICE_LOOKUP.push({ alias: norm(p), hero }));
 });
 VOICE_LOOKUP.sort((a, b) => b.alias.length - a.alias.length);
 
@@ -1164,8 +1269,6 @@ function toggleVoice() {
     if (interim) voiceStatus('Hearing: "' + interim.trim() + '"', "");
     if (finalText.trim()) {
       const heard = finalText.trim();
-      const heardEl = document.getElementById("voice-heard");
-      if (heardEl) heardEl.textContent = '🗣 heard: "' + heard + '"';
       console.log("[voice] heard:", heard);
       handleVoiceCommand(heard);
     }
