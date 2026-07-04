@@ -145,6 +145,8 @@
   .hex.filled.Duelist { background: var(--duelist); }
   .hex.filled.Strategist { background: var(--strategist); }
   .hex.filled.Multi { background: var(--multi); }
+  /* Role badge (Deadpool): inherits text color via currentColor */
+  .role-ic { width: 0.95em; height: 0.95em; vertical-align: -0.12em; margin-right: 3px; display: inline-block; }
 
   /* Voice / action controls */
   .scan-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
@@ -262,6 +264,14 @@
     min-height: 26px; padding: 1px 4px; font-size: 11px; border-radius: 4px;
     line-height: 1.05; text-align: center; font-family: 'Oxanium', sans-serif;
   }
+  /* Role color-coding: a colored left stripe per class on each roster chip */
+  .picker-col .hero-btn { border-left-width: 3px; }
+  .picker-col .hero-btn.role-Vanguard   { border-left-color: var(--vanguard); }
+  .picker-col .hero-btn.role-Duelist    { border-left-color: var(--duelist); }
+  .picker-col .hero-btn.role-Strategist { border-left-color: var(--strategist); }
+  /* When picked, the whole chip goes green/red — keep the left edge in step */
+  .picker-col .hero-btn.picked-my    { border-left-color: var(--accent); }
+  .picker-col .hero-btn.picked-enemy { border-left-color: var(--red); }
   .right-panes {
     display: grid; grid-template-columns: 0.8fr 1fr 1fr; gap: 16px;
     align-items: stretch;
@@ -533,15 +543,19 @@ const HEROES = [
   { name: "Rocket Raccoon",  role: "Strategist", tags: ["healer","sustain","mobile"] },
   { name: "Ultron",          role: "Strategist", tags: ["healer","flying","poke"] },
   { name: "White Fox",       role: "Strategist", tags: ["healer","mobile","cc"] },
-  // Multi-Role (1)
-  { name: "Deadpool",        role: "Multi", tags: ["brawl","dive","sustain"] },
+  // Deadpool flexes to all three classes, so he's listed once under each.
+  // `icon: true` shows his role badge (shield / sword / health cross) on the
+  // roster chip and on the squad hex.
+  { name: "Deadpool",        role: "Vanguard",   tags: ["brawl","dive"],   icon: true },
+  { name: "Deadpool",        role: "Duelist",    tags: ["dive","flank"],   icon: true },
+  { name: "Deadpool",        role: "Strategist", tags: ["sustain","heal"], icon: true },
   // Upcoming — Season 9 (launches July 10, 2026). Roles/tags are TBD until the
   // real kits drop; shown in the picker but not yet selectable. On launch,
   // change role to the real one, add tags, and delete `upcoming: true`.
   { name: "Jubilee",         role: "Upcoming", tags: [], upcoming: true },
   { name: "The Hood",        role: "Upcoming", tags: [], upcoming: true },
 ];
-const ROLES = ["Vanguard", "Duelist", "Strategist", "Multi"];
+const ROLES = ["Vanguard", "Duelist", "Strategist"];
 const byName = {};
 HEROES.forEach(h => byName[h.name.toLowerCase()] = h);
 
@@ -587,6 +601,16 @@ function hexTextColor(bg) {
    free to host/share). Applied to all four panes via the heroFont() calls. */
 function heroFont(name) { return "'Orbitron', sans-serif"; }
 
+/* Role badges for heroes flagged icon:true (e.g. Deadpool, who flexes to all
+   three classes). Inline SVG uses currentColor so it matches the chip/hex text:
+   shield = Vanguard, sword = Duelist, health cross = Strategist. */
+const ROLE_ICON = {
+  Vanguard:   '<svg class="role-ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 4 5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V5z"/></svg>',
+  Duelist:    '<svg class="role-ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 3h2v9h-2zM8 12h8v2H8zM11 14h2v6h-2z"/></svg>',
+  Strategist: '<svg class="role-ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></svg>'
+};
+function heroIcon(h) { return h && h.icon ? (ROLE_ICON[h.role] || "") : ""; }
+
 /* ============ STATE ============ */
 const squads = { my: [], enemy: [] };
 let pickTarget = "my"; // which team the shared hero picker adds to
@@ -618,7 +642,8 @@ function renderSquad(which) {
     const hero = squad[i];
     const hex = document.createElement("button");
     hex.className = "hex" + (hero ? " filled " + hero.role : "");
-    hex.textContent = hero ? hero.name : "+";
+    if (hero) hex.innerHTML = heroIcon(hero) + hero.name;
+    else hex.textContent = "+";
     hex.title = hero ? hero.name + " (click to remove)" : "Empty slot";
     if (hero) {
       const c = HERO_COLORS[hero.name];
@@ -657,7 +682,8 @@ function renderPicker() {
   const el = document.getElementById("hero-picker");
   el.innerHTML = "";
   ROLES.forEach(role => {
-    const heroes = HEROES.filter(h => h.role === role && !h.upcoming);
+    const heroes = HEROES.filter(h => h.role === role && !h.upcoming)
+      .sort((a, b) => a.name.localeCompare(b.name));
     if (!heroes.length) return;
     const sec = document.createElement("div");
     sec.className = "role-section";
@@ -668,8 +694,8 @@ function renderPicker() {
       const onMine = squads.my.includes(h);
       const onEnemy = squads.enemy.includes(h);
       const b = document.createElement("button");
-      b.className = "hero-btn" + (onMine ? " picked-my" : "") + (onEnemy ? " picked-enemy" : "");
-      b.innerHTML = rosterLabel(h.name);
+      b.className = "hero-btn role-" + h.role + (onMine ? " picked-my" : "") + (onEnemy ? " picked-enemy" : "");
+      b.innerHTML = heroIcon(h) + rosterLabel(h.name);
       b.title = (onMine ? "On your team. " : "") + (onEnemy ? "On enemy team. " : "") +
         "Click to " + ((pickTarget === "my" ? onMine : onEnemy) ? "remove from " : "add to ") +
         (pickTarget === "my" ? "your team." : "the enemy team.");
