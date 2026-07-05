@@ -8,7 +8,7 @@
      to host/share, served by Google Fonts (no bundled files). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Oxanium:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Orbitron:wght@500;700&family=Oxanium:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0b0e14;
@@ -133,20 +133,28 @@
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
     justify-items: center; width: 100%;
   }
+  /* Comic Burst hero badges (design concept 2a): starburst SVG with a white
+     rim, inked/gold outline, halftone dots and a slight tilt. Every filled
+     hero shows the glowing "selected" (gold) state. */
   .hex {
-    width: 104px; height: 94px; display: flex; align-items: center; justify-content: center;
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    background: var(--panel-2); border: none; color: var(--dim);
-    font-weight: 700; font-size: 22px; cursor: pointer; position: relative;
+    position: relative; width: 100%; max-width: 116px; aspect-ratio: 1 / 1;
+    background: none; border: none; padding: 0; cursor: pointer;
+    transform: rotate(2deg); transition: transform .16s ease;
   }
-  .hex.filled {
-    color: #0b0e14; font-size: 15px; line-height: 1.1;
-    padding: 0 8px; text-align: center; white-space: normal; word-break: break-word;
+  .hex.empty { cursor: default; }
+  .hex svg { width: 100%; height: 100%; overflow: visible; display: block; }
+  .hex.filled svg { filter: drop-shadow(0 0 12px rgba(255,210,63,0.64)); }
+  .hex.filled:hover { transform: scale(1.05) rotate(2deg); }
+  .hex .hex-name {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 20%; transform: rotate(-4deg); pointer-events: none;
+    font-family: 'Bangers', system-ui, sans-serif; font-weight: 400; font-size: 15px;
+    color: #fff; letter-spacing: 0.03em; line-height: 0.92; text-transform: uppercase;
+    -webkit-text-stroke: 1.2px #0B0B0E; text-shadow: 2px 2px 0 #0B0B0E;
   }
-  .hex.filled.Vanguard { background: var(--vanguard); }
-  .hex.filled.Duelist { background: var(--duelist); }
-  .hex.filled.Strategist { background: var(--strategist); }
-  .hex.filled.Multi { background: var(--multi); }
+  .hex.empty .hex-name {
+    color: #3A414F; font-size: 30px; -webkit-text-stroke: 1px #0B0B0E; text-shadow: none;
+  }
   /* Role badge (Deadpool): inherits text color via currentColor */
   .role-ic { width: 0.95em; height: 0.95em; vertical-align: -0.12em; margin-right: 3px; display: inline-block; }
 
@@ -741,6 +749,29 @@ function setPickTarget(which) {
   renderPicker();
 }
 /* ============ SQUAD RENDERING ============ */
+// ---- Comic Burst hero badges (design concept 2a) ----
+// 14-point action starburst, computed once (identical for every tile).
+const BURST_POINTS = (() => {
+  const n = 14, cx = 50, cy = 50, R = 47, r = 37.5, pts = [];
+  for (let i = 0; i < n * 2; i++) {
+    const a = (Math.PI / n) * i - Math.PI / 2, rad = i % 2 === 0 ? R : r;
+    pts.push((cx + rad * Math.cos(a)).toFixed(2) + "," + (cy + rad * Math.sin(a)).toFixed(2));
+  }
+  return pts.join(" ");
+})();
+// Layered burst: white rim, colored body with ink/gold outline, halftone dots.
+// Filled heroes use the gold "selected" outline; empty slots use the dark ink.
+function burstSVG(fill, pid, empty) {
+  const ink = empty ? "#0B0B0E" : "#FFD23F";
+  const inkW = empty ? 3.2 : 2;
+  return '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">'
+    + '<defs><pattern id="' + pid + '" width="4.6" height="4.6" patternUnits="userSpaceOnUse">'
+    + '<circle cx="1.1" cy="1.1" r="1.05" fill="rgba(0,0,0,0.24)"/></pattern></defs>'
+    + '<g transform="translate(50,50) scale(1.07) translate(-50,-50)"><polygon points="' + BURST_POINTS + '" fill="#FFFFFF"/></g>'
+    + '<polygon points="' + BURST_POINTS + '" fill="' + fill + '" stroke="' + ink + '" stroke-width="' + inkW + '" stroke-linejoin="round"/>'
+    + '<polygon points="' + BURST_POINTS + '" fill="url(#' + pid + ')"/>'
+    + '</svg>';
+}
 function renderSquad(which) {
   const squad = squads[which];
   const slotsEl = document.getElementById(which === "my" ? "squad-slots" : "enemy-slots");
@@ -748,15 +779,17 @@ function renderSquad(which) {
   for (let i = 0; i < 6; i++) {
     const hero = squad[i];
     const hex = document.createElement("button");
-    hex.className = "hex" + (hero ? " filled " + hero.role : "");
-    if (hero) hex.innerHTML = heroIcon(hero) + hero.name;
-    else hex.textContent = "+";
-    hex.title = hero ? hero.name + " (click to remove)" : "Empty slot";
+    hex.className = "hex " + (hero ? "filled" : "empty");
+    const pid = "burst-" + which + "-" + i;
     if (hero) {
-      const c = HERO_COLORS[hero.name];
-      if (c) { hex.style.background = c; hex.style.color = hexTextColor(c); }
-      const hf = heroFont(hero.name); if (hf) hex.style.fontFamily = hf;
+      const c = HERO_COLORS[hero.name] || "#4A4F5A";
+      hex.innerHTML = burstSVG(c, pid, false)
+        + '<span class="hex-name">' + heroIcon(hero) + hero.name + "</span>";
+      hex.title = hero.name + " (click to remove)";
       hex.onclick = () => togglePick(which, hero);
+    } else {
+      hex.innerHTML = burstSVG("#161822", pid, true) + '<span class="hex-name">+</span>';
+      hex.title = "Empty slot";
     }
     slotsEl.appendChild(hex);
   }
