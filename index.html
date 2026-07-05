@@ -147,8 +147,8 @@
   .hex.filled:hover { transform: scale(1.05) rotate(2deg); }
   .hex .hex-name {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    text-align: center; padding: 20%; transform: rotate(-4deg); pointer-events: none;
-    font-family: 'Bangers', system-ui, sans-serif; font-weight: 400; font-size: 15px;
+    text-align: center; padding: 14%; transform: rotate(-4deg); pointer-events: none;
+    font-family: 'Bangers', system-ui, sans-serif; font-weight: 400; font-size: 19px;
     color: #fff; letter-spacing: 0.03em; line-height: 0.92; text-transform: uppercase;
     -webkit-text-stroke: 1.2px #0B0B0E; text-shadow: 2px 2px 0 #0B0B0E;
   }
@@ -157,6 +157,10 @@
   }
   /* Role badge (Deadpool): inherits text color via currentColor */
   .role-ic { width: 0.95em; height: 0.95em; vertical-align: -0.12em; margin-right: 3px; display: inline-block; }
+  /* Inside the comic burst badges the icon is just a hint — keep it small and
+     stack it below the name so the name stays centered in the shape. */
+  .hex .hex-name.has-role { flex-direction: column; }
+  .hex-name .role-ic { width: 0.65em; height: 0.65em; margin: 3px 0 0; }
 
   /* Voice / action controls */
   .scan-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
@@ -783,8 +787,9 @@ function renderSquad(which) {
     const pid = "burst-" + which + "-" + i;
     if (hero) {
       const c = HERO_COLORS[hero.name] || "#4A4F5A";
+      const ic = heroIcon(hero);
       hex.innerHTML = burstSVG(c, pid, false)
-        + '<span class="hex-name">' + heroIcon(hero) + hero.name + "</span>";
+        + '<span class="hex-name' + (ic ? " has-role" : "") + '">' + hero.name + ic + "</span>";
       hex.title = hero.name + " (click to remove)";
       hex.onclick = () => togglePick(which, hero);
     } else {
