@@ -495,7 +495,7 @@
       <h2>Ult Watch</h2>
       <input type="text" id="ult-search" placeholder="Search a hero to track their ult..."
              oninput="renderUltSearch(this.value)">
-      <div class="paste-hint" style="margin-top:8px">&#127908; Or say &ldquo;Hela ultimate&rdquo; to start a ring &mdash; use the <b>Power Up Voice Link</b> button at the top. (Say the full word &ldquo;ultimate&rdquo; &mdash; &ldquo;ult&rdquo; often mis-hears.)</div>
+      <div class="paste-hint" style="margin-top:8px">&#127908; Or say &ldquo;Hela ultimate&rdquo; to start a ring &mdash; use the <b>Power Up Voice Link</b> button at the top. (&ldquo;ult&rdquo; works too &mdash; even when it mis-hears as &ldquo;alt&rdquo;.)</div>
       <div id="ult-results"></div>
       <div id="ult-timers"></div>
       <div class="ult-empty" id="ult-empty">No ults tracked yet. Search a hero above, or say a hero's name to start a timer.</div>
@@ -583,7 +583,7 @@
       <h3>Ult timers</h3>
       <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Hela ultimate&rdquo;</span></span><span class="vp-does">Starts that hero&rsquo;s ult countdown ring in Ult Watch</span></div>
       <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Punisher ultimate&rdquo;</span> / &ldquo;puni ultimate&rdquo; / &ldquo;pun ultimate&rdquo;</span><span class="vp-does">Starts Punisher&rsquo;s ult timer</span></div>
-      <div class="vp-row"><span class="vp-say tip">Say the full word <b>&ldquo;ultimate&rdquo;</b></span><span class="vp-does">The slang &ldquo;ult&rdquo; often mis-hears &mdash; &ldquo;ultimate&rdquo; is reliable</span></div>
+      <div class="vp-row"><span class="vp-say tip">&ldquo;Ult&rdquo; slang works too</span><span class="vp-does">&ldquo;Ult / ulted / ulting&rdquo; count, even when they mis-hear as &ldquo;alt / alted / alting&rdquo; &mdash; &ldquo;ultimate&rdquo; is still the most reliable</span></div>
     </div>
 
     <div class="vp-section">
@@ -1181,8 +1181,9 @@ function cssId(s) { return s.replace(/[^a-z0-9]/gi, "-").toLowerCase(); }
    Uses the browser's built-in Web Speech API — no API key needed.
    Say hero names to fill the enemy squad; "remove X", "clear",
    "lock it in". Auto-locks at 6 and reads the intel back out loud.
-   "<hero> ulted/ult/ulting/ultimate" starts that hero's ult timer
-   instead of adding them to the squad. "swapped/switched X for Y"
+   "<hero> ulted/ult/ulting/ultimate" (or mis-heard "alt/alts/alting/
+   alted") starts that hero's ult timer instead of adding them to the
+   squad. "swapped/switched X for Y"
    updates the enemy squad (who's already on the team goes out). */
 const ALIASES = {
   "Captain America": ["cap", "steve rogers"],
@@ -1366,9 +1367,10 @@ function handleVoiceCommand(text) {
   if (heroes.length) lastSpokenHero = heroes[heroes.length - 1];
   // "<hero> ulted / ult / ulting / ultimate" -> start that hero's ult timer
   // (matches ult, ulted, ulting, ults, ultie, ultimate; not adult/result/ultra).
-  // If the speech engine splits it ("Hela" ... then "ulted"), fall back to the
-  // most recently spoken hero so the ult still registers.
-  const ulting = /\bult(imate[sd]?|ing|ed|s|ie)?\b/.test(t);
+  // The speech engine often mis-hears "ult" as "alt", so alt/alts/alting/alted
+  // count too. If the engine splits it ("Hela" ... then "ulted"), fall back to
+  // the most recently spoken hero so the ult still registers.
+  const ulting = /\b(ult(imate[sd]?|ing|ed|s|ie)?|alt(ing|ed|s)?)\b/.test(t);
   if (ulting) {
     const ultHeroes = heroes.length ? heroes : (lastSpokenHero ? [lastSpokenHero] : []);
     if (ultHeroes.length) {
