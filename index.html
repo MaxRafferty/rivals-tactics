@@ -495,7 +495,7 @@
       <h2>Ult Watch</h2>
       <input type="text" id="ult-search" placeholder="Search a hero to track their ult..."
              oninput="renderUltSearch(this.value)">
-      <div class="paste-hint" style="margin-top:8px">&#127908; Or say &ldquo;Hela ultimate&rdquo; to start a ring &mdash; use the <b>Power Up Voice Link</b> button at the top. (&ldquo;ult&rdquo; works too &mdash; even when it mis-hears as &ldquo;alt&rdquo;.)</div>
+      <div class="paste-hint" style="margin-top:8px">&#127908; Or say &ldquo;Hela ultimate&rdquo; to start a ring &mdash; use the <b>Power Up Voice Link</b> button at the top. (&ldquo;ult&rdquo; works too, and &ldquo;Hela timer&rdquo; is the most reliable.)</div>
       <div id="ult-results"></div>
       <div id="ult-timers"></div>
       <div class="ult-empty" id="ult-empty">No ults tracked yet. Search a hero above, or say a hero's name to start a timer.</div>
@@ -583,6 +583,7 @@
       <h3>Ult timers</h3>
       <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Hela ultimate&rdquo;</span></span><span class="vp-does">Starts that hero&rsquo;s ult countdown ring in Ult Watch</span></div>
       <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Punisher ultimate&rdquo;</span> / &ldquo;puni ultimate&rdquo; / &ldquo;pun ultimate&rdquo;</span><span class="vp-does">Starts Punisher&rsquo;s ult timer</span></div>
+      <div class="vp-row"><span class="vp-say"><span class="q">&ldquo;Hela timer&rdquo;</span> / &ldquo;Hela charged&rdquo;</span><span class="vp-does">Backup trigger words &mdash; longer words the speech engine almost never misses</span></div>
       <div class="vp-row"><span class="vp-say tip">&ldquo;Ult&rdquo; slang works too</span><span class="vp-does">&ldquo;Ult / ulted / ulting&rdquo; count, even when they mis-hear as &ldquo;alt / alted / alting&rdquo; &mdash; &ldquo;ultimate&rdquo; is still the most reliable</span></div>
     </div>
 
@@ -1182,8 +1183,8 @@ function cssId(s) { return s.replace(/[^a-z0-9]/gi, "-").toLowerCase(); }
    Say hero names to fill the enemy squad; "remove X", "clear",
    "lock it in". Auto-locks at 6 and reads the intel back out loud.
    "<hero> ulted/ult/ulting/ultimate" (or mishears like "alt", "salt",
-   "alton", "alteen") starts that hero's ult timer instead of adding
-   them to the squad. "swapped/switched X for Y"
+   "alton", "alteen" — plus the backup words "timer" and "charged")
+   starts that hero's ult timer instead of adding them to the squad. "swapped/switched X for Y"
    updates the enemy squad (who's already on the team goes out). */
 const ALIASES = {
   "Captain America": ["cap", "steve rogers"],
@@ -1304,17 +1305,24 @@ function toggleVoice() {
   recog.lang = "en-US";
   recog.continuous = true;
   recog.interimResults = true;
+  // Ask the engine for its runner-up guesses too — when "Hela ult" mis-hears
+  // as "Hela salt", the right words are often in guess #2 or #3. (Engines may
+  // still return fewer than requested.)
+  recog.maxAlternatives = 5;
   recog.onresult = e => {
     let finalText = "", interim = "";
+    const alts = []; // runner-up transcripts for the final phrases
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) finalText += e.results[i][0].transcript + " ";
-      else interim += e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        finalText += e.results[i][0].transcript + " ";
+        for (let j = 1; j < e.results[i].length; j++) alts.push(e.results[i][j].transcript);
+      } else interim += e.results[i][0].transcript;
     }
     if (interim) voiceStatus('Hearing: "' + interim.trim() + '"', "");
     if (finalText.trim()) {
       const heard = finalText.trim();
-      console.log("[voice] heard:", heard);
-      handleVoiceCommand(heard);
+      console.log("[voice] heard:", heard, alts.length ? "| runner-ups: " + alts.join(" / ") : "");
+      handleVoiceCommand(heard, alts);
     }
   };
   recog.onerror = e => {
@@ -1342,7 +1350,7 @@ function stopVoice() {
   document.getElementById("voice-btn").innerHTML = "&#9889; Power Up Voice Link";
   voiceStatus("Voice off.", "");
 }
-function handleVoiceCommand(text) {
+function handleVoiceCommand(text, alts = []) {
   let t = text.toLowerCase();
   // Route to YOUR squad when the phrase says "my team"/"my squad"/"our team".
   // Without that phrase, everything defaults to the ENEMY squad, so calling out
@@ -1363,15 +1371,23 @@ function handleVoiceCommand(text) {
     speak("Cleared " + (target === "my" ? "your team" : "enemy"));
     return;
   }
-  const heroes = parseHeroesFromSpeech(text);
+  // If the engine's top guess garbled the hero name, try its runner-up
+  // guesses before giving up on finding a hero.
+  let heroes = parseHeroesFromSpeech(text);
+  if (!heroes.length) {
+    for (const a of alts) { heroes = parseHeroesFromSpeech(a); if (heroes.length) break; }
+  }
   if (heroes.length) lastSpokenHero = heroes[heroes.length - 1];
   // "<hero> ulted / ult / ulting / ultimate" -> start that hero's ult timer
   // (matches ult, ulted, ulting, ults, ultie, ultimate; not adult/result/ultra).
   // The speech engine mis-hears "ult" a lot, so common mishears count too:
   // alt/alts/alting/alted, salt/salts/salting/salted, alton/altons, alteen.
+  // "timer(s)" and "charged" are deliberate backup words — long enough that
+  // engines almost never miss them. The runner-up guesses are checked too.
   // If the engine splits it ("Hela" ... then "ulted"), fall back to the most
   // recently spoken hero so the ult still registers.
-  const ulting = /\b(ult(imate[sd]?|ing|ed|s|ie)?|alt(ing|ed|s)?|salt(ing|ed|s)?|altons?|alteen)\b/.test(t);
+  const ULT_RE = /\b(ult(imate[sd]?|ing|ed|s|ie)?|alt(ing|ed|s)?|salt(ing|ed|s)?|altons?|alteen|timers?|charged)\b/;
+  const ulting = ULT_RE.test(t) || alts.some(a => ULT_RE.test(a.toLowerCase()));
   if (ulting) {
     const ultHeroes = heroes.length ? heroes : (lastSpokenHero ? [lastSpokenHero] : []);
     if (ultHeroes.length) {
