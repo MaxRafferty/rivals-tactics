@@ -1181,9 +1181,9 @@ function cssId(s) { return s.replace(/[^a-z0-9]/gi, "-").toLowerCase(); }
    Uses the browser's built-in Web Speech API — no API key needed.
    Say hero names to fill the enemy squad; "remove X", "clear",
    "lock it in". Auto-locks at 6 and reads the intel back out loud.
-   "<hero> ulted/ult/ulting/ultimate" (or mis-heard "alt/alts/alting/
-   alted") starts that hero's ult timer instead of adding them to the
-   squad. "swapped/switched X for Y"
+   "<hero> ulted/ult/ulting/ultimate" (or mishears like "alt", "salt",
+   "alton", "alteen") starts that hero's ult timer instead of adding
+   them to the squad. "swapped/switched X for Y"
    updates the enemy squad (who's already on the team goes out). */
 const ALIASES = {
   "Captain America": ["cap", "steve rogers"],
@@ -1367,10 +1367,11 @@ function handleVoiceCommand(text) {
   if (heroes.length) lastSpokenHero = heroes[heroes.length - 1];
   // "<hero> ulted / ult / ulting / ultimate" -> start that hero's ult timer
   // (matches ult, ulted, ulting, ults, ultie, ultimate; not adult/result/ultra).
-  // The speech engine often mis-hears "ult" as "alt", so alt/alts/alting/alted
-  // count too. If the engine splits it ("Hela" ... then "ulted"), fall back to
-  // the most recently spoken hero so the ult still registers.
-  const ulting = /\b(ult(imate[sd]?|ing|ed|s|ie)?|alt(ing|ed|s)?)\b/.test(t);
+  // The speech engine mis-hears "ult" a lot, so common mishears count too:
+  // alt/alts/alting/alted, salt/salts/salting/salted, alton/altons, alteen.
+  // If the engine splits it ("Hela" ... then "ulted"), fall back to the most
+  // recently spoken hero so the ult still registers.
+  const ulting = /\b(ult(imate[sd]?|ing|ed|s|ie)?|alt(ing|ed|s)?|salt(ing|ed|s)?|altons?|alteen)\b/.test(t);
   if (ulting) {
     const ultHeroes = heroes.length ? heroes : (lastSpokenHero ? [lastSpokenHero] : []);
     if (ultHeroes.length) {
