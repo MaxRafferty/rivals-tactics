@@ -1398,12 +1398,12 @@ function handleVoiceCommand(text, alts = []) {
   // "<hero> ulted / ult / ulting / ultimate" -> start that hero's ult timer
   // (matches ult, ulted, ulting, ults, ultie, ultimate; not adult/result/ultra).
   // The speech engine mis-hears "ult" a lot, so common mishears count too:
-  // alt/alts/alting/alted, salt/salts/salting/salted, alton/altons, alteen.
+  // alt/alts/alting/alted/altered, salt/salts/salting/salted, alton/altons, alteen.
   // "timer(s)" and "charged" are deliberate backup words — long enough that
   // engines almost never miss them. The runner-up guesses are checked too.
   // If the engine splits it ("Hela" ... then "ulted"), fall back to the most
   // recently spoken hero so the ult still registers.
-  const ULT_RE = /\b(ult(imate[sd]?|ing|ed|s|ie)?|alt(ing|ed|s)?|salt(ing|ed|s)?|altons?|alteen|timers?|charged)\b/;
+  const ULT_RE = /\b(ult(imate[sd]?|ing|ed|s|ie)?|alt(ing|ed|s|ered)?|salt(ing|ed|s)?|altons?|alteen|timers?|charged)\b/;
   const ulting = ULT_RE.test(t) || alts.some(a => ULT_RE.test(a.toLowerCase()));
   if (ulting) {
     const ultHeroes = heroes.length ? heroes : (lastSpokenHero ? [lastSpokenHero] : []);
